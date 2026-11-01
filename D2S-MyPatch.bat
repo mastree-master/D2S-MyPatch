@@ -31,7 +31,7 @@ if (-not (Test-Path $asar)) {
 $backup = "$asar.orig"
 
 # 업데이트 확인: GitHub의 version.txt가 더 크면 새 bat를 받아 자기 자신을 바꾸고 다시 실행
-$Ver = 3
+$Ver = 4
 $Repo = 'mastree-master/D2S-MyPatch'
 $raw = "https://raw.githubusercontent.com/$Repo/main"
 try {
@@ -79,7 +79,12 @@ $game = ReadFile $gameEntry
 $patched = $game.Contains('isNew:e=>')
 if (-not $Action) {
     Write-Host ''
-    if ($patched) {
+    # 게임에 심어 둔 패치 버전 (v4 이전 패치는 표시가 없어 0)
+    $pv = if ($game -match 'globalThis\.__d2sv=(\d+);') { [int]$Matches[1] } else { 0 }
+    if ($patched -and $pv -lt $Ver) {
+        Write-Host (T "  현재: 예전 버전 패치 상태입니다. (새 버전 v$Ver)" "  Current: older patch. (new v$Ver)") -ForegroundColor Yellow
+        $Action = 'patch'; $q = T '  새 버전으로 덮어서 패치할까요? (y/n)' '  Re-patch with the new version? (y/n)'
+    } elseif ($patched) {
         Write-Host (T '  현재: 패치 상태입니다.' '  Current: patched.') -ForegroundColor Yellow
         $Action = 'restore'; $q = T '  원본으로 복구할까요? (y/n)' '  Restore original? (y/n)'
     } else {
@@ -192,6 +197,9 @@ $game = Swap $game 'o=jr(r,a,!!n.portal?.through(t,e,a!==null&&a>=1.5))' 'o=jr(r
 # 배속 (F7): 1 → 1.5 → 2 → 3배 순환. 프레임당 게임 업데이트 횟수를 늘림 (1.5배는 남는 0.5를 다음 프레임으로 넘김)
 $game = 'globalThis.__spd=1;globalThis.__spdA=0;globalThis.__spdS=x=>{let a=globalThis.__spdA+x*globalThis.__spd,k=Math.floor(a);return globalThis.__spdA=a-k,k};document.addEventListener(`keydown`,e=>{if(e.code!==`F7`)return;e.preventDefault(),e.stopPropagation();let l=[1,1.5,2,3];globalThis.__spd=l[(l.indexOf(globalThis.__spd)+1)%l.length],globalThis.__spdA=0;let o=document.getElementById(`__spd`);o||(o=document.createElement(`div`),o.id=`__spd`,o.style.cssText=`position:fixed;left:50%;top:6px;transform:translateX(-50%);z-index:9999;background:#000a;color:#fc6;border:1px solid #fc6;padding:2px 10px;font:bold 15px sans-serif;pointer-events:none`,document.body.append(o)),o.textContent=`' + (T '배속' 'Speed') + ' x${globalThis.__spd} (F7)`,o.style.display=globalThis.__spd===1?`none`:``},!0);' + $game
 $game = Swap $game 'for(let e=0;e<I.speed*t&&i&&' 'for(let e=0,S=globalThis.__spdS(I.speed*t);e<S&&i&&' 'speed'
+
+# 패치 버전 표시: 다음 실행 때 예전 버전인지 판단용
+$game = 'globalThis.__d2sv=' + $Ver + ';' + $game
 
 # 게임 실행 중 30분마다 GitHub 버전 확인, 새 버전 있으면 오른쪽 아래 알림 (클릭하면 닫힘)
 $game = 'setTimeout(function c(){fetch(`' + $raw + '/version.txt?`+Date.now()).then(r=>r.text()).then(t=>{if(+t>' + $Ver + '&&!document.getElementById(`__upd`)){let d=document.createElement(`div`);d.id=`__upd`,d.textContent=`' + (T '패치 업데이트 있음 (v' 'Patch update available (v') + '${+t}). ' + (T '게임을 끄고 D2S-MyPatch.bat 실행' 'Close the game and run D2S-MyPatch.bat') + '`,d.style.cssText=`position:fixed;right:8px;bottom:8px;z-index:9999;background:#000c;color:#fc6;border:1px solid #fc6;padding:6px 10px;font:14px sans-serif;cursor:pointer`,d.onclick=()=>d.remove(),document.body.append(d)}}).catch(()=>{}),setTimeout(c,18e5)},5e3);' + $game
