@@ -31,7 +31,7 @@ if (-not (Test-Path $asar)) {
 $backup = "$asar.orig"
 
 # 업데이트 확인: GitHub의 version.txt가 더 크면 새 bat를 받아 자기 자신을 바꾸고 다시 실행
-$Ver = '1.19'
+$Ver = '1.20'
 $Repo = 'mastree-master/D2S-MyPatch'
 # raw.githubusercontent는 몇 분씩 예전 파일을 내주므로 캐시 없는 GitHub API로 받는다
 $raw = "https://api.github.com/repos/$Repo/contents"
@@ -120,6 +120,11 @@ $pv = if ($game -match 'globalThis\.__d2sv=([\d.]+);') { $Matches[1] } else { ''
 
 # 패치 기록 (선택 창 오른쪽에 표시). 새 버전은 맨 위에 추가
 $changelog = @'
+1.20
+- 설명서 F6, 룬워드 목록 F4 (고정 옵션 / 변하는 옵션 범위, 검색)
+- 맨 위 줄에 F6 · F4 · F10 단축키 항상 표시
+- 게임 안 업데이트 확인을 GitHub API로 (올리자마자 반영, 3분마다), 막히면 예비 주소로
+
 1.19
 - 적용 기능 한 줄을 화면 맨 위로, 색 구분 (적용 초록 / 안 함 빨강)
 
@@ -421,8 +426,48 @@ if ([int]$O.res -gt 0) {
     $uiText = Swap $uiText 'apply(e){let t=this.app.renderer;' ('apply(e){e=' + $rv + ';let t=this.app.renderer;') 'render res apply'
 }
 
+# 게임 안 설명서(F6)와 룬워드 목록(F4): 오른쪽 창으로 열고 닫기
+$guide = @'
+[기본 단축키]
+F6  설명서 (이 창)
+F10 패치 기록
+F4  룬워드 목록 (고정 옵션 / 변하는 옵션 범위)
+F7  배속 1 → 1.5 → 2 → 3배
+F8  AFK 모드 (검은 화면 + 진행 상황)
+F9  FPS · 버전 표시
+B   창고 열기 (런 중, 마을)
+Ctrl+클릭  인벤토리 아이템을 창고로
+PageUp / PageDown  밝기,  Home / End  명암
+
+[아이템 자동 처리]
+- 새 유니크/세트/룬워드는 보관함(고유)에 자동 등록
+- 등록본보다 좋으면 자동 교체 (스킬 > 오라·발동 > 그 외 옵션 > 방어력 순으로 비교)
+- 룬워드: 같은 무기 종류끼리만 교체, 한손 우선 등록, 한손/양손 겸용은 양손으로 따로 보관
+- 룬워드 중복: 같은 종류는 판매 (한손은 1개 더 보관), 다른 종류는 종류별 1개 보관
+- 스킬 붙은 부적은 창고로, 그 외는 자동 판매 (퀘스트 아이템은 인벤토리)
+- 인벤토리가 꽉 차면 개인 창고 → 공용 창고 순서로
+
+[화면 표시]
+- 왼쪽 획득 목록: 줄에 마우스를 올리면 옵션, [교체] 줄은 바뀐 옵션
+- [되돌리기]: 유니크/세트 교체 취소
+- 아이템 툴팁 옆 비교 상자: 같은 아이템 위치와 좋고 나쁨 (초록 ▲ 좋음 / 빨강 ▼ 나쁨)
+- 툴팁 맨 아래 "숨겨진 값"
+- 맨 위 줄: 적용된 기능 (초록 ✓ 적용 / 빨강 ✗ 안 함)
+
+[자동 진행]
+- 공포 영역 보스 처치 후 포털 자동 입장
+- 클리어 후 같은 단계 반복 또는 한 단계씩 올라가기 (패치 창에서 선택)
+- 상점(T)이나 Esc 로 나가면 취소
+
+[패치 / 업데이트]
+- D2S-MyPatch.bat 실행 → 기능 체크 → [체크한 것 적용]
+- 새 버전이 나오면 오른쪽 아래 알림 → 클릭 → 예: 게임 종료, 패치, 다시 실행
+- 패치 상태에서는 순위표에 기록을 보내지 않음
+'@
+$game = 'globalThis.__guide=' + ($guide | ConvertTo-Json) + ';globalThis.__pnl=(id,title,html)=>{let o=document.getElementById(id);for(let x of[`__plog`,`__pguide`,`__prw`])document.getElementById(x)?.remove();if(o)return null;o=document.createElement(`div`),o.id=id,o.style.cssText=`position:fixed;right:20px;top:40px;bottom:40px;width:min(600px,46vw);overflow:auto;z-index:10003;background:#000e;color:#ddd;border:1px solid #fc6;padding:10px 14px;font:14px sans-serif;line-height:1.5`,o.innerHTML=`<div style="color:#fc6;font-weight:bold;margin-bottom:6px">${title}</div>`+html,document.body.append(o);return o};globalThis.__esc=t=>String(t).replace(/&/g,`&amp;`).replace(/</g,`&lt;`);globalThis.__rwHtml=()=>{let w=globalThis.__rw?.();if(!w?.R?.runewords)return`' + (T '룬워드 데이터를 아직 못 읽었습니다. 게임을 한 판 시작한 뒤 다시 열어 보세요.' 'Runeword data not loaded yet. Start a run and try again.') + '`;let ty={weap:`' + (T '무기' 'weapon') + '`,mele:`' + (T '근접 무기' 'melee') + '`,miss:`' + (T '원거리 무기' 'missile') + '`,swor:`' + (T '검' 'sword') + '`,axe:`' + (T '도끼' 'axe') + '`,pole:`' + (T '미늘창' 'polearm') + '`,spea:`' + (T '창' 'spear') + '`,hamm:`' + (T '망치' 'hammer') + '`,club:`' + (T '둔기' 'club') + '`,mace:`' + (T '철퇴' 'mace') + '`,scep:`' + (T '홀' 'scepter') + '`,staf:`' + (T '지팡이' 'staff') + '`,wand:`' + (T '마법봉' 'wand') + '`,knif:`' + (T '단검' 'dagger') + '`,h2h:`' + (T '손톱' 'claw') + '`,bow:`' + (T '활' 'bow') + '`,xbow:`' + (T '석궁' 'crossbow') + '`,helm:`' + (T '투구' 'helm') + '`,tors:`' + (T '갑옷' 'armor') + '`,shld:`' + (T '방패' 'shield') + '`,pala:`' + (T '성기사 방패' 'paladin shield') + '`,head:`' + (T '강령술사 머리' 'necro head') + '`,orb:`' + (T '오브' 'orb') + '`,abow:`' + (T '아마존 활' 'amazon bow') + '`,aspe:`' + (T '아마존 창' 'amazon spear') + '`,jave:`' + (T '투창' 'javelin') + '`},K=t=>String(t).replace(/[0-9.]+/g,`#`),out=[];for(let v of w.list){let d=w.R.runewords[v.name];if(!d?.props?.length)continue;let mk=m=>{let st=w.roll(d,m);try{let l=globalThis.__tip?.({name:v.name,rarity:`runeword`,stats:st});if(l?.length)return l.slice(1)}catch{}return st.map(s=>s.stat+(s.param!=null?`(${s.param})`:``)+` `+s.value)},a=mk(`min`),b=mk(`max`),B=new Set,L=a.map(p=>{let j=b.findIndex((q,J)=>!B.has(J)&&K(q)===K(p));if(j<0)return`<div style="color:#aaa">${__esc(p)}</div>`;B.add(j);return b[j]===p?`<div style="color:#aaa">${__esc(p)}</div>`:`<div style="color:#fc6">${__esc(p)} <span style="color:#888">~</span> ${__esc(b[j])}</div>`}).join(``),nm=v.name;try{nm=globalThis.__nm?.({name:v.name,rarity:`runeword`})||v.name}catch{}out.push(`<div class="rw" data-k="${__esc((nm+` `+v.name+` `+v.runes.join(` `)).toLowerCase())}" style="margin:8px 0;padding-top:6px;border-top:1px solid #333"><div><b style="color:#c9a">${__esc(nm)}</b> <span style="color:#888">${__esc(v.name)}</span></div><div style="color:#8cf">${v.runes.join(` + `)} · ' + (T '레벨' 'lvl') + ' ${v.lvl} · ${v.types.map(t=>ty[t]??t).join(`, `)}</div>${L}</div>`)}return`<div style="color:#888;margin-bottom:4px">' + (T '노랑 = 변하는 옵션 (최소 ~ 최대), 회색 = 고정 옵션' 'yellow = variable (min ~ max), grey = fixed') + '</div><input id="__prwq" placeholder="' + (T '검색 (이름, 룬)' 'search (name, rune)') + '" style="width:100%;box-sizing:border-box;padding:4px 6px;background:#111;color:#ddd;border:1px solid #555;font:14px sans-serif">`+out.join(``)};document.addEventListener(`keydown`,e=>{if(e.target?.id===`__prwq`){e.stopPropagation();return}let k={F6:1,F4:2}[e.code];if(!k)return;e.preventDefault(),e.stopPropagation();if(k===1)globalThis.__pnl(`__pguide`,`' + (T '설명서' 'Guide') + ' v' + $Ver + ' (F6 ' + (T '닫기' 'close') + ')`,`<div style="white-space:pre-line">${__esc(globalThis.__guide)}</div>`);else{let o=globalThis.__pnl(`__prw`,`' + (T '룬워드 목록' 'Runewords') + ' (F4 ' + (T '닫기' 'close') + ')`,globalThis.__rwHtml());let q=o?.querySelector(`#__prwq`);q&&(q.oninput=()=>{let t=q.value.toLowerCase();o.querySelectorAll(`.rw`).forEach(x=>x.style.display=x.dataset.k.includes(t)?``:`none`)},q.focus())}},!0);' + $game
+
 # 게임 안 패치 기록 (F10으로 열고 닫기)
-$game = 'globalThis.__plog=' + ($changelog | ConvertTo-Json) + ';document.addEventListener(`keydown`,e=>{if(e.code!==`F10`)return;e.preventDefault(),e.stopPropagation();let o=document.getElementById(`__plog`);if(o)return o.remove();o=document.createElement(`div`),o.id=`__plog`,o.style.cssText=`position:fixed;right:20px;top:60px;bottom:60px;width:440px;overflow:auto;z-index:10003;background:#000e;color:#ddd;border:1px solid #fc6;padding:10px 14px;font:14px sans-serif;line-height:1.5;white-space:pre-line`,o.textContent=`' + (T '패치 기록' 'Patch log') + ' v' + $Ver + ' (F10 ' + (T '닫기' 'close') + ')\n`+globalThis.__papp+`\n\n`+globalThis.__plog,document.body.append(o)},!0);setTimeout(()=>{let h=document.createElement(`div`);h.id=`__pbar`,h.style.cssText=`position:fixed;left:0;right:0;top:0;z-index:10000;background:#000b;color:#ccc;padding:2px 8px;font:12px sans-serif;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;pointer-events:none`,h.innerHTML=`<span style="color:#fc6;font-weight:bold">D2S v' + $Ver + '</span> · <span style="color:#8cf">F10 ' + (T '패치 기록' 'patch log') + '</span> · `+globalThis.__papp.replace(/</g,`&lt;`).replace(/\u2713([^ ·|]+)/g,`<span style="color:#7e7">\u2713$1</span>`).replace(/\u2717([^ ·|]+)/g,`<span style="color:#f77">\u2717$1</span>`),document.body.append(h)},3e3);' + $game
+$game = 'globalThis.__plog=' + ($changelog | ConvertTo-Json) + ';document.addEventListener(`keydown`,e=>{if(e.code!==`F10`)return;e.preventDefault(),e.stopPropagation();let o=document.getElementById(`__plog`);if(o)return o.remove();o=document.createElement(`div`),o.id=`__plog`,o.style.cssText=`position:fixed;right:20px;top:60px;bottom:60px;width:440px;overflow:auto;z-index:10003;background:#000e;color:#ddd;border:1px solid #fc6;padding:10px 14px;font:14px sans-serif;line-height:1.5;white-space:pre-line`,o.textContent=`' + (T '패치 기록' 'Patch log') + ' v' + $Ver + ' (F10 ' + (T '닫기' 'close') + ')\n`+globalThis.__papp+`\n\n`+globalThis.__plog,document.body.append(o)},!0);setTimeout(()=>{let h=document.createElement(`div`);h.id=`__pbar`,h.style.cssText=`position:fixed;left:0;right:0;top:0;z-index:10000;background:#000b;color:#ccc;padding:2px 8px;font:12px sans-serif;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;pointer-events:none`,h.innerHTML=`<span style="color:#fc6;font-weight:bold">D2S v' + $Ver + '</span> · <span style="color:#8cf">F6 ' + (T '설명서' 'guide') + ' · F4 ' + (T '룬워드' 'runewords') + ' · F10 ' + (T '패치 기록' 'patch log') + '</span> · `+globalThis.__papp.replace(/</g,`&lt;`).replace(/\u2713([^ ·|]+)/g,`<span style="color:#7e7">\u2713$1</span>`).replace(/\u2717([^ ·|]+)/g,`<span style="color:#f77">\u2717$1</span>`),document.body.append(h)},3e3);' + $game
 $game = 'globalThis.__papp=' + ($applied | ConvertTo-Json) + ';' + $game
 
 # 패치 버전 표시: 다음 실행 때 예전 버전인지 판단용
@@ -473,6 +518,10 @@ $tip = (Find $keepText ('function (' + $id + ')\(e,t,n=1,r,i=\{\},a\)\{if\(') 't
 $bases = (Find $keepText ('(' + $id + ')=new Map\((' + $id + ')\.map\(e=>\[e\.name,e\]\)\),' + $id + '=\2\.filter\(e=>e\.type===`charm`\)') 'bases').Groups[1].Value
 $cats = (Find $keepText ('(' + $id + ')=\[\[`head`,`Helms`\]') 'categories').Groups[1].Value
 $tr = (Find $keepText ('import\{[^}]*\bd as (' + $id + ')[^}]*\}from"\./lang-') 'translate').Groups[1].Value
+$rwR = (Find $keepText ('function ' + $id + '\(e\)\{let t=(' + $id + ')\?\.runewords\?\.\[e\];return!!t&&') 'runeword data').Groups[1].Value
+$rwRoll = (Find $keepText ('function (' + $id + ')\(e,t\)\{return ' + $id + '\(e\.props\.flatMap\(\(\{stats:e,min:n,max:r\}\)') 'runeword roll').Groups[1].Value
+$rwList = (Find $keepText ('lvl:a\}\},(' + $id + ')=\[V\(') 'runeword list').Groups[1].Value
+$keepText += ";globalThis.__rw=()=>({R:$rwR,list:$rwList,roll:$rwRoll})"
 $keepText += ";globalThis.__tip=e=>{try{return $tip(e).lines.map(l=>$tr(l.text))}catch{return[]}};globalThis.__kd=e=>{let o=$bases.get(e.base);return o?.type===``weapon``?o.kind+(o.twoHand?2:1):o?.type};globalThis.__slot=e=>{let o=$bases.get(e.base),w=o?.type===``weapon``,c=w?o.kind:o?.type,n=$cats.find(x=>x[0]===c)?.[1],g=!o?null:w?``$(T '무기' 'Weapon')``:c===``ring``||c===``amulet``?``$(T '장신구' 'Jewelry')``:c===``charm``?null:``$(T '방어구' 'Armor')``,h=w?(o.oneHand&&o.twoHand?``$(T '한손/양손' '1H/2H')``:o.twoHand?``$(T '양손' '2H')``:``$(T '한손' '1H')``):null;return[{unique:``$(T '유니크' 'Unique')``,set:``$(T '세트' 'Set')``,runeword:``$(T '룬워드' 'Runeword')``}[e.rarity],g,h,n&&$tr(n),o&&$tr(e.base)].filter(Boolean).join(``` · ``)};"
 # kodia.ttf가 있으면 숫자·영문·기호도 디아2 그림 글꼴 대신 그 폰트로 그린다 (공백 제외 전부)
 $langEntry = Entry 'lang'
@@ -525,8 +574,8 @@ $mainText = [regex]::Replace($mainText, $throttle, '')
 $mainText = Swap $mainText 'if (method === "POST" && (typeof body !== "string" || body.length > MAX_BODY3)) return { status: 413, body: null };' ('if (method === "POST" && (typeof body !== "string" || body.length > MAX_BODY3)) return { status: 413, body: null };' + "`n    " + 'if (method === "POST") return { status: 200, body: "{}", retryAfter: null };') 'no send'
 # 게임 안 업데이트 알림용: 이 패치 저장소의 파일만 인터넷 접근 허용 (게임은 원래 외부 접속을 모두 막음)
 $mainText = Swap $mainText 'const own = /^(app|devtools|data|blob):/.test(details.url);' ('const own = /^(app|devtools|data|blob):/.test(details.url) || details.url.startsWith("' + $raw + '/");' + $(if ($env:D2SF) { 'if (details.url === "https://d2s-update.invalid/run") { require("child_process").spawn("cmd.exe", ["/c", "start", "\"\"", "\"" + ' + ($env:D2SF | ConvertTo-Json) + ' + "\""], { detached: true, stdio: "ignore", windowsVerbatimArguments: true, env: { ...process.env, D2S_RELAUNCH: "1" } }).unref(); setTimeout(() => import_electron4.app.quit(), 300); }' })) 'update allow'
-# 게임 본체에서 1분마다 GitHub 버전 확인 (raw 주소: 한도 없음, 최대 5분 늦음). 새 버전이면 화면의 __updShow 호출
-$mainText += ';(() => { const https = require("https"); const check = () => { https.get({ host: "raw.githubusercontent.com", path: "/' + $Repo + '/main/version.txt?" + Date.now(), headers: { "User-Agent": "D2S-MyPatch" } }, (r) => { let b = ""; r.setEncoding("utf8"); r.on("data", (d) => b += d); r.on("end", () => { if (r.statusCode !== 200 || !(+b.split(/\r?\n/)[0] > ' + $Ver + ')) return; for (const w of require("electron").webContents.getAllWebContents()) w.executeJavaScript("globalThis.__updShow && globalThis.__updShow(" + JSON.stringify(b) + ")").catch(() => {}); }); }).on("error", () => {}); }; setTimeout(check, 15e3); setInterval(check, 6e4); })();'
+# 게임 본체에서 3분마다 GitHub API로 버전 확인 (IP당 1시간 60회 한도 → 20회 사용), 실패하면 raw 주소(몇 분 늦음). 새 버전이면 화면의 __updShow 호출
+$mainText += ';(() => { const https = require("https"); const get = (host, path, headers, done) => https.get({ host, path, headers: { "User-Agent": "D2S-MyPatch", ...headers } }, (r) => { let b = ""; r.setEncoding("utf8"); r.on("data", (d) => b += d); r.on("end", () => done(r.statusCode === 200 ? b : null)); }).on("error", () => done(null)); const show = (b) => { if (!b || !(+b.split(/\r?\n/)[0] > ' + $Ver + ')) return; for (const w of require("electron").webContents.getAllWebContents()) w.executeJavaScript("globalThis.__updShow && globalThis.__updShow(" + JSON.stringify(b) + ")").catch(() => {}); }; const check = () => get("api.github.com", "/repos/' + $Repo + '/contents/version.txt", { Accept: "application/vnd.github.raw" }, (b) => b ? show(b) : get("raw.githubusercontent.com", "/' + $Repo + '/main/version.txt", {}, show)); setTimeout(check, 15e3); setInterval(check, 18e4); })();'
 $mainBytes = $utf8.GetBytes($mainText)
 $header = $header.Replace($mm[0].Value, (NewEntry $mm[0] $mainBytes ($dataLen + $gameBytes.Length + $keepBytes.Length + $uiBytes.Length + $langBytes.Length)))
 # 패치 폴더에 kodia.ttf가 있으면 게임 한글 폰트 두 개(fonts-ko/kodia.woff2, irisl.woff2)를 모두 그 파일로 바꾼다
