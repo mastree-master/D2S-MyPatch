@@ -62,7 +62,7 @@ The patch UI follows your Windows language (Korean / English).
 
 To undo: run the bat → **Restore original**.
 
-![Feature selection](docs/gui.png)
+![Feature selection](docs/launcher.png)
 
 ## Auto-update
 
