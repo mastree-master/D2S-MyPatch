@@ -11,27 +11,46 @@ param([string]$Lang, [string]$Action, [string]$GameDir)
 $ErrorActionPreference = 'Stop'
 try { [Console]::OutputEncoding = [Text.Encoding]::UTF8 } catch {}
 
-if (-not $Lang) {
-    Write-Host ''
-    Write-Host '  1. 한국어'
-    Write-Host '  2. English'
-    $Lang = if ((Read-Host '  언어 / Language') -eq '2') { 'en' } else { 'ko' }
-}
+if (-not $Lang) { $Lang = if ((Get-UICulture).Name -like 'ko*') { 'ko' } else { 'en' } }
 $ko = $Lang -ne 'en'
 function T($k, $e) { if ($ko) { $k } else { $e } }
-function Fail($msg) { Write-Host ''; Write-Host "  [X] $msg" -ForegroundColor Red; exit 1 }
+# bat를 더블클릭해 실행한 경우: cmd 창을 숨기고 모든 안내를 창(GUI)으로. 끝나면 숨긴 cmd도 닫는다
+$gui = $env:D2SF -and -not $env:D2S_NOGUI
+if ($gui) {
+    Add-Type -AssemblyName System.Windows.Forms, System.Drawing
+    try { Add-Type -Name W -Namespace D2S -MemberDefinition '[DllImport("kernel32.dll")] public static extern IntPtr GetConsoleWindow(); [DllImport("user32.dll")] public static extern bool ShowWindow(IntPtr h, int n);' } catch {}
+    [void][D2S.W]::ShowWindow([D2S.W]::GetConsoleWindow(), 0)
+}
+function Msg($text, $icon = 'Information', $buttons = 'OK') {
+    if ($gui) { return [string][Windows.Forms.MessageBox]::Show($text, "D2S-MyPatch", $buttons, $icon) }
+    Write-Host $text; 'OK'
+}
+function Done($code) {
+    if ($gui) {
+        $pp = Get-CimInstance Win32_Process -Filter "ProcessId=$PID"
+        $cmd = Get-CimInstance Win32_Process -Filter "ProcessId=$($pp.ParentProcessId)"
+        # 사용자가 직접 연 cmd 창에서 실행한 경우는 닫지 않는다 (bat 경로가 명령줄에 있을 때만)
+        if ($cmd.CommandLine -like "*$(Split-Path $env:D2SF -Leaf)*") { Stop-Process -Id $cmd.ProcessId -ErrorAction SilentlyContinue }
+    }
+    exit $code
+}
+function Fail($msg) { [void](Msg $msg 'Error'); Done 1 }
 
 if (-not $GameDir) { $GameDir = Join-Path $env:LOCALAPPDATA 'Programs\D2 Survivors' }
 $asar = Join-Path $GameDir 'resources\app.asar'
 if (-not (Test-Path $asar)) {
-    $GameDir = Read-Host (T '  게임 설치 폴더를 입력하세요 (D2 Survivors.exe가 있는 폴더)' '  Enter the game folder (the one with D2 Survivors.exe)')
+    if ($gui) {
+        $fb = New-Object Windows.Forms.FolderBrowserDialog; $fb.Description = T '게임 설치 폴더를 고르세요 (D2 Survivors.exe가 있는 폴더)' 'Choose the game folder (the one with D2 Survivors.exe)'
+        if ($fb.ShowDialog() -ne 'OK') { Done 0 }
+        $GameDir = $fb.SelectedPath
+    } else { $GameDir = Read-Host (T '  게임 설치 폴더를 입력하세요 (D2 Survivors.exe가 있는 폴더)' '  Enter the game folder (the one with D2 Survivors.exe)') }
     $asar = Join-Path $GameDir.Trim('"') 'resources\app.asar'
     if (-not (Test-Path $asar)) { Fail (T "app.asar를 찾을 수 없습니다: $asar" "app.asar not found: $asar") }
 }
 $backup = "$asar.orig"
 
 # 업데이트 확인: GitHub의 version.txt가 더 크면 새 bat를 받아 자기 자신을 바꾸고 다시 실행
-$Ver = '1.21'
+$Ver = '1.22'
 $Repo = 'mastree-master/D2S-MyPatch'
 # raw.githubusercontent는 몇 분씩 예전 파일을 내주므로 캐시 없는 GitHub API로 받는다
 $raw = "https://api.github.com/repos/$Repo/contents"
@@ -47,18 +66,17 @@ try {
     $nv = [decimal]::Parse($vt[0].Trim(), $inv)
 } catch { $nv = 0; $vt = @() }
 if ($nv -gt [decimal]::Parse($Ver, $inv) -and $env:D2SF) {
-    Write-Host ''
-    Write-Host (T "  새 버전(v$($vt[0].Trim()))이 있습니다. 지금 버전 v$Ver" "  New version (v$($vt[0].Trim())) available. Current v$Ver") -ForegroundColor Cyan
-    $vt | Select-Object -Skip 1 | Where-Object { $_.Trim() } | ForEach-Object { Write-Host "    $_" }
-    if ((Read-Host (T '  업데이트할까요? (y/n)' '  Update now? (y/n)')) -eq 'y') {
+    $notes = ($vt | Select-Object -Skip 1 | Where-Object { $_.Trim() }) -join "`n"
+    $ask = (T "새 버전 v$($vt[0].Trim()) 이 있습니다. (지금 v$Ver)" "New version v$($vt[0].Trim()) is available. (current v$Ver)") + "`n`n$notes`n`n" + (T '업데이트할까요?' 'Update now?')
+    $yes = if ($gui) { (Msg $ask 'Question' 'YesNo') -eq 'Yes' } else { Write-Host $ask; (Read-Host '  (y/n)') -eq 'y' }
+    if ($yes) {
         $wc.Headers['User-Agent'] = 'D2S-MyPatch'; $wc.Headers['Accept'] = 'application/vnd.github.raw'
         $nb = $wc.DownloadData("$raw/D2S-MyPatch.bat")
         $ns = [Text.Encoding]::UTF8.GetString($nb)
         if (-not $ns.Contains('#PS' + 'START') -or -not ($ns -match '\$Ver = ''([\d.]+)''' -and [decimal]::Parse($Matches[1], $inv) -gt [decimal]::Parse($Ver, $inv))) { Fail (T '받은 파일이 올바르지 않습니다.' 'Downloaded file is invalid.') }
         [IO.File]::WriteAllBytes($env:D2SF, $nb)
-        Write-Host (T '  업데이트 완료. 새 버전으로 다시 실행합니다.' '  Updated. Restarting with new version.') -ForegroundColor Green
         & ([scriptblock]::Create($ns.Substring($ns.IndexOf('#PS' + 'START')))) -Lang $Lang -Action $Action -GameDir $GameDir
-        exit
+        Done 0
     }
 }
 
@@ -120,6 +138,10 @@ $pv = if ($game -match 'globalThis\.__d2sv=([\d.]+);') { $Matches[1] } else { ''
 
 # 패치 기록 (선택 창 오른쪽에 표시). 새 버전은 맨 위에 추가
 $changelog = @'
+1.22
+- cmd 창 없이 바로 GUI: 업데이트 확인 · 오류 · 완료를 모두 창으로 표시
+- 언어는 Windows 언어로 자동, 게임 폴더는 폴더 선택 창
+
 1.21
 - 획득 목록을 채팅창처럼: 화면 아래쪽, 스크롤로 지난 기록 보기 (최근 300개), 새 줄은 맨 아래
 - 각 줄 앞에 [월/일 시:분] 표시
@@ -277,7 +299,7 @@ if (-not $Action) {
         New-Item -ItemType Directory -Force (Split-Path $optFile) | Out-Null
         $O | ConvertTo-Json | Set-Content $optFile -Encoding UTF8
     } elseif ($res -eq 'No') { $Action = 'restore' }
-    else { Write-Host (T '  취소했습니다.' '  Cancelled.'); exit 0 }
+    else { Done 0 }
 }
 if (-not $hasFont) { $O.font = $false }
 $on = $feat.Keys | Where-Object { $O[$_] } | ForEach-Object { $feat[$_] }
@@ -288,9 +310,8 @@ if ($Action -eq 'restore') {
     if (-not $patched) { Fail (T '패치가 적용되어 있지 않습니다. 복구할 것이 없습니다.' 'The patch is not applied. Nothing to restore.') }
     if (-not (Test-Path $backup)) { Fail (T "백업 파일이 없습니다: $backup" "Backup not found: $backup") }
     Copy-Item $backup $asar -Force
-    Write-Host ''
-    Write-Host (T '  [OK] 원래대로 복구했습니다.' '  [OK] Original restored.') -ForegroundColor Green
-    exit 0
+    [void](Msg (T '원래대로 복구했습니다.' 'Original restored.'))
+    Done 0
 }
 
 # 이미 패치된 상태면 같은 버전의 백업 원본에서 다시 패치한다 (새 기능 반영)
@@ -612,11 +633,9 @@ $w.Flush()
 
 if (-not $fromBackup) { Copy-Item $asar $backup -Force }
 [IO.File]::WriteAllBytes($asar, $out.ToArray())
-Write-Host ''
 Write-Host (T '  [OK] 패치 완료. 게임을 실행하세요.' '  [OK] Patched. Start the game.') -ForegroundColor Green
-Write-Host (T "  원본 백업: $backup" "  Original backup: $backup")
-Write-Host (T '  적용한 기능' '  Enabled features') -ForegroundColor Cyan
-$on | ForEach-Object { Write-Host "    - $_" }
 Write-Host "  $applied"
-if ($env:D2S_RELAUNCH) { Write-Host (T '  게임을 다시 실행합니다.' '  Starting the game.'); Start-Process explorer.exe ('"' + (Join-Path $GameDir 'D2 Survivors.exe') + '"') }  # explorer로 켜야 게임 로그가 이 창에 안 찍힘
-if ($env:D2S_RELAUNCH) { Start-Sleep 2; Stop-Process -Id (Get-CimInstance Win32_Process -Filter "ProcessId=$PID").ParentProcessId -ErrorAction SilentlyContinue; exit }
+# 알림에서 패치한 경우 게임을 다시 켠다 (explorer로 켜야 게임 로그가 이 창에 안 찍힘)
+if ($env:D2S_RELAUNCH) { Start-Process explorer.exe ('"' + (Join-Path $GameDir 'D2 Survivors.exe') + '"') }
+elseif ($gui) { [void](Msg ((T "패치 완료 (v$Ver). 게임을 실행하세요." "Patched (v$Ver). Start the game.") + "`n`n" + ($applied -replace ' · ', "`n" -replace ' \| ', "`n"))) }
+Done 0
