@@ -151,6 +151,7 @@ $changelog = @'
 - 기능 탭 스크롤 없이 한 화면: 기능 · 조절값을 같은 폭의 상자(금색 테두리 · 제목 띠)에 2열로, 조절값 입력칸 줄 맞춤
 - 보관 설정 탭: 맨 앞 선택 칸, 전체 선택 / 전체 해제(보이는 줄), "체크한 줄을 [인벤 · 판매 · 창고] (으)로 적용", 구분 · 검색 · 설정 필터(인벤만 · 판매만 · 창고만)
 - 패치 창 배너에 움직이는 Diablo II 불꽃 로고 (게임 타이틀 그림), 인게임 단축키 상자, GitHub 버튼
+- 패치 창 제목줄 · 선택칸 · 패치 기록 스크롤바 어두운 색
 - 패치 창 언어 판별을 여러 값으로 (가끔 영어로 뜨던 문제)
 
 1.57
@@ -528,7 +529,7 @@ if (-not $Action) {
     $tb1 = New-Object Windows.Forms.Button; $tb1.Text = T '기능' 'Features'; $tb2 = New-Object Windows.Forms.Button; $tb2.Text = T '보관 설정 (F2)' 'Keep settings (F2)'
     foreach ($x in @($tb1, $tb2)) { $x.Size = New-Object Drawing.Size(170, 32); $x.Margin = '0,0,4,0'; $x.Font = New-Object Drawing.Font('Malgun Gothic', 10, [Drawing.FontStyle]::Bold); $tabs.Controls.Add($x) }
     $tabSel = { param($i) $t1.Visible = $i -eq 0; $t2.Visible = $i -eq 1; foreach ($x in @(@($tb1, 0), @($tb2, 1))) { $x[0].Tag = ($x[1] -eq $i) }; $tb1.Invalidate(); $tb2.Invalidate() }
-    $tb1.Add_Click({ & $tabSel 0 }); $tb2.Add_Click({ & $tabSel 1 })
+    $tb1.Add_Click({ & $tabSel 0 }); $tb2.Add_Click({ & $tabSel 1; if ($dark) { & $dark $t2 } })
     $tc.Controls.Add($t2); $tc.Controls.Add($t1); $tc.Controls.Add($tabs)
     . $KeepTab $t2
     $fp = New-Object Windows.Forms.FlowLayoutPanel; $fp.FlowDirection = 'TopDown'; $fp.AutoSize = $true; $fp.WrapContents = $false; $fp.Controls.AddRange(@($tc, $bp)); $f.Controls.Add($fp); $f.AcceptButton = $bApply; $f.CancelButton = $bClose
@@ -548,7 +549,12 @@ if (-not $Action) {
             if ($imgBtn) { $c.BackgroundImage = $imgBtn; $c.BackgroundImageLayout = 'Stretch'; $c.FlatAppearance.BorderSize = 0 }
         } elseif ($c -is [Windows.Forms.TextBox] -or $c -is [Windows.Forms.ComboBox] -or $c -is [Windows.Forms.NumericUpDown]) {
             $c.BackColor = [Drawing.Color]::FromArgb(36, 28, 20); $c.ForeColor = $cTxt
-            if ($c -is [Windows.Forms.ComboBox]) { $c.FlatStyle = 'Flat' } else { $c.BorderStyle = 'FixedSingle' }
+            if ($c -is [Windows.Forms.ComboBox]) {
+                $c.FlatStyle = 'Flat'; $c.DrawMode = 'OwnerDrawFixed'
+                $c.Add_DrawItem({ param($s, $e) if ($e.Index -lt 0) { return }; $sel = ($e.State -band [Windows.Forms.DrawItemState]::Selected) -ne 0
+                    $e.Graphics.FillRectangle((New-Object Drawing.SolidBrush($(if ($sel) { [Drawing.Color]::FromArgb(80, 56, 24) } else { [Drawing.Color]::FromArgb(36, 28, 20) }))), $e.Bounds)
+                    $e.Graphics.DrawString([string]$s.Items[$e.Index], $s.Font, (New-Object Drawing.SolidBrush([Drawing.Color]::FromArgb(230, 218, 190))), [single]($e.Bounds.X + 2), [single]($e.Bounds.Y + 1)) })
+            } else { $c.BorderStyle = 'FixedSingle' }
         } elseif ($c -is [Windows.Forms.GroupBox]) { $c.ForeColor = $cGold; $c.BackColor = $cBg }
         elseif ($c -is [Windows.Forms.TabPage] -or $c -is [Windows.Forms.Panel] -or $c -is [Windows.Forms.Form]) { $c.BackColor = $cBg; $c.ForeColor = $cTxt }
         elseif ($c -is [Windows.Forms.Label] -and $c.Tag -eq 'key') { $c.ForeColor = $cGold; $c.BackColor = [Drawing.Color]::FromArgb(40, 30, 18) }
@@ -556,6 +562,9 @@ if (-not $Action) {
         foreach ($x in $c.Controls) { & $skin $x }
     }
     & $skin $f
+    try { Add-Type -Namespace D2S -Name Dark -MemberDefinition '[DllImport("uxtheme.dll", CharSet = CharSet.Unicode)] public static extern int SetWindowTheme(IntPtr h, string a, string b); [DllImport("dwmapi.dll")] public static extern int DwmSetWindowAttribute(IntPtr h, int a, ref int v, int s);' } catch {}
+    $dark = { param($c) if (($c -is [Windows.Forms.TextBox] -and $c.Multiline) -or $c -is [Windows.Forms.ScrollBar]) { try { [void][D2S.Dark]::SetWindowTheme($c.Handle, 'DarkMode_Explorer', $null) } catch {} }; foreach ($x in $c.Controls) { & $dark $x } }
+    $f.Add_Load({ try { $v = 1; [void][D2S.Dark]::DwmSetWindowAttribute($f.Handle, 20, [ref]$v, 4) } catch {}; & $dark $f })
     # 탭: 어두운 바탕에 금색 글씨로 직접 그림
     foreach ($x in @($tb1, $tb2)) { $x.FlatAppearance.BorderSize = 1; $x.Add_Paint({ param($s, $e) if ($s.Tag) { $e.Graphics.DrawRectangle((New-Object Drawing.Pen($cGold, 2)), 1, 1, $s.Width - 3, $s.Height - 3) } }) }; & $tabSel 0
     # 맨 위 배너: 게임 메뉴 그림(가로로 잘라 채움) + 어둡게 + 금색 제목
