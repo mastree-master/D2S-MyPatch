@@ -31,7 +31,7 @@ if (-not (Test-Path $asar)) {
 $backup = "$asar.orig"
 
 # 업데이트 확인: GitHub의 version.txt가 더 크면 새 bat를 받아 자기 자신을 바꾸고 다시 실행
-$Ver = '1.00'
+$Ver = '1.01'
 $Repo = 'mastree-master/D2S-MyPatch'
 $raw = "https://raw.githubusercontent.com/$Repo/main"
 $inv = [Globalization.CultureInfo]::InvariantCulture
@@ -99,10 +99,12 @@ $feat = [ordered]@{
     stash = T 'B 창고 열기 · Ctrl+클릭 창고로' 'B stash · Ctrl+click to stash'
     afk = T 'AFK 모드 (F8) · 최소화해도 안 멈춤' 'AFK mode (F8) · no minimize throttle'
     speed = T '배속 (F7)' 'Game speed (F7)'
-    bright = T '밝기 조절 (PageUp / PageDown)' 'Brightness (PageUp / PageDown)'
+    bright = T '밝기 · 명암 (PageUp/PageDown, Home/End)' 'Brightness · contrast (PageUp/PageDown, Home/End)'
+    corpse = T '시체 숨김' 'Hide corpses'
+    fps = T 'FPS 표시 (F9)' 'Show FPS (F9)'
     font = T '폰트 교체 (kodia.ttf 있을 때)' 'Font replace (needs kodia.ttf)'
 }
-$O = @{ delay = 4; brightness = 100; logn = 15 }
+$O = @{ delay = 4; brightness = 100; contrast = 100; logn = 15; res = 0; fpscap = 0 }
 foreach ($k in $feat.Keys) { $O[$k] = $true }
 try { (Get-Content $optFile -Raw -Encoding UTF8 | ConvertFrom-Json).PSObject.Properties | ForEach-Object { $O[$_.Name] = $_.Value } } catch {}
 $hasFont = Test-Path (Join-Path $__root 'kodia.ttf')
@@ -133,6 +135,9 @@ if (-not $Action) {
     $nDelay = Num (T '자동 진행 대기 (초)' 'Auto delay (s)') $O.delay 1 30 1
     $nBright = Num (T '기본 밝기 (%)' 'Default brightness (%)') $O.brightness 50 200 5
     $nLog = Num (T '획득 목록 줄 수' 'Pickup log lines') $O.logn 5 40 1
+    $nContrast = Num (T '기본 명암 (%)' 'Default contrast (%)') $O.contrast 50 200 5
+    $nRes = Num (T '렌더링 해상도 (%, 0 = 자동)' 'Render resolution (%, 0 = auto)') $O.res 0 200 25
+    $nCap = Num (T 'FPS 제한 (0 = 제한 없음)' 'FPS cap (0 = none)') $O.fpscap 0 240 10
     $bp = New-Object Windows.Forms.FlowLayoutPanel; $bp.AutoSize = $true; $bp.Padding = '0,10,0,0'
     $bApply = New-Object Windows.Forms.Button; $bApply.Text = T '체크한 것 적용' 'Apply checked'; $bApply.AutoSize = $true; $bApply.DialogResult = 'Yes'
     $bRestore = New-Object Windows.Forms.Button; $bRestore.Text = T '원본으로 복구' 'Restore original'; $bRestore.AutoSize = $true; $bRestore.DialogResult = 'No'; $bRestore.Enabled = $patched
@@ -144,6 +149,7 @@ if (-not $Action) {
         $Action = 'patch'
         foreach ($k in $feat.Keys) { $O[$k] = $cb[$k].Checked }
         $O.delay = [int]$nDelay.Value; $O.brightness = [int]$nBright.Value; $O.logn = [int]$nLog.Value
+        $O.contrast = [int]$nContrast.Value; $O.res = [int]$nRes.Value; $O.fpscap = [int]$nCap.Value
         New-Item -ItemType Directory -Force (Split-Path $optFile) | Out-Null
         $O | ConvertTo-Json | Set-Content $optFile -Encoding UTF8
     } elseif ($res -eq 'No') { $Action = 'restore' }
@@ -278,9 +284,25 @@ $game = 'globalThis.__spd=1;globalThis.__spdA=0;globalThis.__spdS=(x,d,on)=>{let
 $game = Swap $game 'for(let e=0;e<I.speed*t&&i&&' 'for(let e=0,S=globalThis.__spdS(I.speed*t,n,i&&this.state===`playing`&&!r);e<S&&i&&' 'speed'
 }
 
+# 밝기·명암: 게임 화면 canvas에 필터. PageUp/PageDown 밝기, Home/End 명암. 기본값은 선택 창 값
 if ($O.bright) {
-# 밝기 (PageUp / PageDown): 게임 화면 canvas에 밝기 필터. 기본값은 선택 창의 기본 밝기
-$game = 'globalThis.__br=' + ([decimal]$O.brightness / 100).ToString($inv) + ';globalThis.__brA=()=>document.querySelectorAll(`canvas`).forEach(c=>{c.classList.contains(`d2-text`)||(c.style.filter=globalThis.__br===1?``:`brightness(${globalThis.__br})`)});setInterval(globalThis.__brA,2e3);document.addEventListener(`keydown`,e=>{let u=e.code===`PageUp`,w=e.code===`PageDown`;if(!u&&!w)return;e.preventDefault(),e.stopPropagation(),globalThis.__br=Math.min(2,Math.max(.5,Math.round((globalThis.__br+(u?.1:-.1))*10)/10)),globalThis.__brA();let o=document.getElementById(`__brt`);o||(o=document.createElement(`div`),o.id=`__brt`,o.style.cssText=`position:fixed;left:50%;top:40px;transform:translateX(-50%);z-index:9999;background:#000a;color:#fc6;border:1px solid #fc6;padding:2px 10px;font:bold 15px sans-serif;pointer-events:none`,document.body.append(o)),o.textContent=`' + (T '밝기' 'Brightness') + ' ${Math.round(globalThis.__br*100)}%`,o.style.display=``,clearTimeout(o.__t),o.__t=setTimeout(()=>o.style.display=`none`,1500)},!0);' + $game
+$game = 'globalThis.__br=' + ([decimal]$O.brightness / 100).ToString($inv) + ';globalThis.__ct=' + ([decimal]$O.contrast / 100).ToString($inv) + ';globalThis.__brA=()=>{let f=(globalThis.__br===1?``:`brightness(${globalThis.__br}) `)+(globalThis.__ct===1?``:`contrast(${globalThis.__ct})`);document.querySelectorAll(`canvas`).forEach(c=>{c.classList.contains(`d2-text`)||(c.style.filter=f)})};setInterval(globalThis.__brA,2e3);document.addEventListener(`keydown`,e=>{let k={PageUp:[`__br`,.1],PageDown:[`__br`,-.1],Home:[`__ct`,.1],End:[`__ct`,-.1]}[e.code];if(!k)return;e.preventDefault(),e.stopPropagation(),globalThis[k[0]]=Math.min(2,Math.max(.5,Math.round((globalThis[k[0]]+k[1])*10)/10)),globalThis.__brA();let o=document.getElementById(`__brt`);o||(o=document.createElement(`div`),o.id=`__brt`,o.style.cssText=`position:fixed;left:50%;top:40px;transform:translateX(-50%);z-index:9999;background:#000a;color:#fc6;border:1px solid #fc6;padding:2px 10px;font:bold 15px sans-serif;pointer-events:none`,document.body.append(o)),o.textContent=`' + (T '밝기' 'Brightness') + ' ${Math.round(globalThis.__br*100)}% · ' + (T '명암' 'Contrast') + ' ${Math.round(globalThis.__ct*100)}%`,o.style.display=``,clearTimeout(o.__t),o.__t=setTimeout(()=>o.style.display=`none`,1500)},!0);' + $game
+}
+# FPS 표시 (F9로 켜고 끔): 오른쪽 위
+if ($O.fps) {
+$game = 'globalThis.__fpsN=0;(function f(){globalThis.__fpsN++,requestAnimationFrame(f)})();setInterval(()=>{let o=document.getElementById(`__fps`);o&&(o.textContent=`FPS ${globalThis.__fpsN*2}`),globalThis.__fpsN=0},500);globalThis.__fpsT=()=>{let o=document.getElementById(`__fps`);if(o)return o.remove();o=document.createElement(`div`),o.id=`__fps`,o.style.cssText=`position:fixed;right:6px;top:6px;z-index:9999;background:#000a;color:#8e8;padding:1px 6px;font:bold 13px monospace;pointer-events:none`,o.textContent=`FPS`,document.body.append(o)};setTimeout(globalThis.__fpsT,3e3);document.addEventListener(`keydown`,e=>{e.code===`F9`&&(e.preventDefault(),e.stopPropagation(),globalThis.__fpsT())},!0);' + $game
+}
+# FPS 제한 (0 = 제한 없음): 낮추면 CPU/GPU 부담이 줄어듦. 게임 진행 속도는 그대로
+if ([int]$O.fpscap -gt 0) {
+    $mf = Find $game ('e\.ticker\.minFPS=1/' + $id + ',') 'fps cap'
+    $game = Swap $game $mf.Value ($mf.Value + 'e.ticker.maxFPS=' + [int]$O.fpscap + ',') 'fps cap'
+}
+# 렌더링 해상도 고정 (0 = 게임 자동): 낮추면 빨라지고 흐려짐
+if ([int]$O.res -gt 0) {
+    $rv = ([decimal]$O.res / 100).ToString($inv)
+    $ri = Find $uiText ('static initial\(e,t,n=\{width:innerWidth,height:innerHeight\}\)\{return t\?\?' + $id + '\(n\.width,n\.height,devicePixelRatio\|\|1,e\)\}') 'render res'
+    $uiText = Swap $uiText $ri.Value ($ri.Value.Replace('{return t??', '{return ' + $rv + '||(t??').TrimEnd('}') + ')}') 'render res'
+    $uiText = Swap $uiText 'apply(e){let t=this.app.renderer;' ('apply(e){e=' + $rv + ';let t=this.app.renderer;') 'render res apply'
 }
 
 # 패치 버전 표시: 다음 실행 때 예전 버전인지 판단용
@@ -315,6 +337,12 @@ $keepText = Swap $keepText $gold.Value ('if(r.kind===`gold`){a+=' + $gold.Groups
 # 상자도 거리와 상관없이 즉시 연다
 $chest = Find $keepText ('if\(r\.kind===`chest`\)\{if\(' + $id + '\(r\.x,r\.y,i,n\)>=n\.radius\+' + $id + '\)continue;') 'chest'
 $keepText = Swap $keepText $chest.Value 'if(r.kind===`chest`){' 'chest'
+}
+
+# 시체 숨김: 시체 그림만 안 보이게 (시체 폭발 등 게임 판정은 그대로)
+if ($O.corpse) {
+    $keepText = Swap $keepText 'e.layer.addChild(a);let o={anim:r,direction:i,time:0,dead:!1,floor:!0,sprite:a};return e.corpses.push(o),o}' 'e.layer.addChild(a),a.visible=!1;let o={anim:r,direction:i,time:0,dead:!1,floor:!0,sprite:a};return e.corpses.push(o),o}' 'corpse'
+    $keepText = Swap $keepText 'e.layer.addChild(i),e.corpses.push({anim:r,direction:0,time:0,dead:!1,sprite:i})}' 'e.layer.addChild(i),i.visible=!1,e.corpses.push({anim:r,direction:0,time:0,dead:!1,sprite:i})}' 'corpse 2'
 }
 
 # 교체 창·목록용 헬퍼: 아이템 옵션 줄(한국어)과 부위/종류
