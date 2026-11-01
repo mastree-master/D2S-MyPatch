@@ -2,7 +2,7 @@
 
 [한국어](README.md) | **English**
 
-**Current patch: v1.50 · for game build 2026.1101.1** (previous build 2026.1030.2 also works)
+**Current patch: v1.51 · for game build 2026.1101.1** (previous build 2026.1030.2 also works)
 
 An unofficial quality-of-life patch that makes farming in D2 Survivors much easier.
 A **single bat file** handles feature selection, patching, restoring the original, and auto-updates.
