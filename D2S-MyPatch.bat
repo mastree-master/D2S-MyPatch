@@ -22,7 +22,13 @@ if ($gui) {
     [void][D2S.W]::ShowWindow([D2S.W]::GetConsoleWindow(), 0)
 }
 function Msg($text, $icon = 'Information', $buttons = 'OK') {
-    if ($gui) { return [string][Windows.Forms.MessageBox]::Show($text, "D2S-MyPatch", $buttons, $icon) }
+    if ($gui) {
+        # 맨 앞에 떠 있는 빈 창을 주인으로 삼아 메시지 창이 게임·다른 창 뒤로 숨지 않게
+        $own = New-Object Windows.Forms.Form -Property @{ TopMost = $true; ShowInTaskbar = $false; StartPosition = 'CenterScreen'; Size = '1,1'; Opacity = 0 }
+        $own.Show(); $own.Activate()
+        $r = [string][Windows.Forms.MessageBox]::Show($own, $text, "D2S-MyPatch", $buttons, $icon)
+        $own.Close(); return $r
+    }
     Write-Host $text; 'OK'
 }
 function Done($code) {
@@ -50,7 +56,7 @@ if (-not (Test-Path $asar)) {
 $backup = "$asar.orig"
 
 # 업데이트 확인: GitHub의 version.txt가 더 크면 새 bat를 받아 자기 자신을 바꾸고 다시 실행
-$Ver = '1.29'
+$Ver = '1.30'
 $Repo = 'mastree-master/D2S-MyPatch'
 # raw.githubusercontent는 몇 분씩 예전 파일을 내주므로 캐시 없는 GitHub API로 받는다
 $raw = "https://api.github.com/repos/$Repo/contents"
@@ -139,6 +145,9 @@ $pv = if ($game -match 'globalThis\.__d2sv=([\d.]+);') { $Matches[1] } else { ''
 
 # 패치 기록 (선택 창 오른쪽에 표시). 새 버전은 맨 위에 추가
 $changelog = @'
+1.30
+- 업데이트 확인 · 완료 · 오류 창과 선택 창이 항상 맨 앞에 뜨게
+
 1.29
 - F4 룬워드 목록 옵션을 한글 문장으로 표시 (영문 이름으로 나오던 문제)
 
@@ -315,6 +324,7 @@ if (-not $Action) {
     $f.Controls.Add($row); $f.AcceptButton = $bApply; $f.CancelButton = $bClose
     $lg.Size = New-Object Drawing.Size(360, $p.PreferredSize.Height)
     if ($env:D2S_SHOT) { $f.Add_Shown({ $b = New-Object Drawing.Bitmap($f.Width, $f.Height); $f.DrawToBitmap($b, (New-Object Drawing.Rectangle(0, 0, $f.Width, $f.Height))); $b.Save($env:D2S_SHOT); $f.Close() }) }
+    $f.Add_Shown({ $f.Activate(); $f.BringToFront() })
     $res = $f.ShowDialog()
     if ($res -eq 'Yes') {
         $Action = 'patch'
