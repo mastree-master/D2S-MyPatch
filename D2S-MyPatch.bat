@@ -56,7 +56,7 @@ if (-not (Test-Path $asar)) {
 $backup = "$asar.orig"
 
 # 업데이트 확인: GitHub의 version.txt가 더 크면 새 bat를 받아 자기 자신을 바꾸고 다시 실행
-$Ver = '1.38'
+$Ver = '1.39'
 $Repo = 'mastree-master/D2S-MyPatch'
 # raw.githubusercontent는 몇 분씩 예전 파일을 내주므로 캐시 없는 GitHub API로 받는다
 $raw = "https://api.github.com/repos/$Repo/contents"
@@ -146,6 +146,10 @@ $pv = if ($game -match 'globalThis\.__d2sv=([\d.]+);') { $Matches[1] } else { ''
 
 # 패치 기록 (선택 창 오른쪽에 표시). 새 버전은 맨 위에 추가
 $changelog = @'
+1.39
+- 비교 상자 위치 표시에 종류도 함께: 등록 · 방어구 · 방패 · ▲ … / 공용 창고 1 · 무기 · 양손 · 둔기 · ▲ …
+- Shift 비교 때 3개 제한 없이 전부
+
 1.38
 - 획득 목록 옵션 보기 창을 게임 툴팁과 같은 색으로 (이름은 등급 색, 일반 옵션 파랑 · 기본 수치 흰색 · 세트 초록 · 룬 금색 · 회색 설명 · 사용 불가 빨강)
 
@@ -449,7 +453,7 @@ $game = Swap $game 'this.state===`character`&&qt(this.world,' 'this.state===`cha
 if ($O.twins) {
 $snap = @($game, $keepText, $uiText, $mainText, $langText, $header); try {
 # 툴팁 옆 게임 비교 상자: 같은 이름·같은 종류만, 등록/개인 창고/공용 창고 1~3/인벤 위치와 좋고 나쁨 표시 (최대 3개)
-$game = 'globalThis.__shift=0;addEventListener(`keydown`,e=>{e.key===`Shift`&&(globalThis.__shift=1)},!0);addEventListener(`keyup`,e=>{e.key===`Shift`&&(globalThis.__shift=0)},!0);addEventListener(`blur`,()=>globalThis.__shift=0);' + "globalThis.__twins=e=>{let g=globalThis.__gm;if(!g||!/^(unique|set|runeword)`$/.test(e.rarity))return null;let c=g.kit?.id,K=__kd(e),m=x=>x!==e&&x.rarity===e.rarity&&x.name===e.name&&(globalThis.__shift||__kd(x)===K),v=x=>__gt(x,e)?``$(T '▲ 보관본이 더 좋음' '▲ stored is better')``:__gt(e,x)?``$(T '▼ 보관본이 더 나쁨' '▼ stored is worse')``:``$(T '= 같음' '= same')``,q=x=>__gt(x,e)?``better``:__gt(e,x)?``worse``:``equipped``,r=[];for(let x of g.save.uniques??[])m(x)&&r.push({label:``$(T '등록' 'Stashed') · ``+v(x),item:x,cls:q(x)});for(let k of $tabs)for(let x of $tab(g.save,c,k))m(x)&&r.push({label:({personal:``$(T '개인 창고' 'Personal')``,shared1:``$(T '공용 창고 1' 'Shared 1')``,shared2:``$(T '공용 창고 2' 'Shared 2')``,shared3:``$(T '공용 창고 3' 'Shared 3')``}[k]??k)+`` · ``+v(x),item:x,cls:q(x)});for(let x of g.inventoryOf(c))m(x)&&r.push({label:``$(T '인벤' 'Inventory') · ``+v(x),item:x,cls:q(x)});return r.slice(0,3)};" + $game
+$game = 'globalThis.__shift=0;addEventListener(`keydown`,e=>{e.key===`Shift`&&(globalThis.__shift=1)},!0);addEventListener(`keyup`,e=>{e.key===`Shift`&&(globalThis.__shift=0)},!0);addEventListener(`blur`,()=>globalThis.__shift=0);' + "globalThis.__twins=e=>{let g=globalThis.__gm;if(!g||!/^(unique|set|runeword)`$/.test(e.rarity))return null;let c=g.kit?.id,K=__kd(e),m=x=>x!==e&&x.rarity===e.rarity&&x.name===e.name&&(globalThis.__shift||__kd(x)===K),v=x=>__gt(x,e)?``$(T '▲ 보관본이 더 좋음' '▲ stored is better')``:__gt(e,x)?``$(T '▼ 보관본이 더 나쁨' '▼ stored is worse')``:``$(T '= 같음' '= same')``,q=x=>__gt(x,e)?``better``:__gt(e,x)?``worse``:``equipped``,r=[];for(let x of g.save.uniques??[])m(x)&&r.push({label:``$(T '등록' 'Stashed') · ``+v(x),item:x,cls:q(x)});for(let k of $tabs)for(let x of $tab(g.save,c,k))m(x)&&r.push({label:({personal:``$(T '개인 창고' 'Personal')``,shared1:``$(T '공용 창고 1' 'Shared 1')``,shared2:``$(T '공용 창고 2' 'Shared 2')``,shared3:``$(T '공용 창고 3' 'Shared 3')``}[k]??k)+`` · ``+v(x),item:x,cls:q(x)});for(let x of g.inventoryOf(c))m(x)&&r.push({label:``$(T '인벤' 'Inventory') · ``+v(x),item:x,cls:q(x)});return r.slice(0,globalThis.__shift?20:3).map(o=>{let p=(globalThis.__slot?.(o.item)??````).split(`` · ``);p.length>2&&(p.shift(),p.pop());p.length&&(o.label=o.label.replace(`` · ``,`` · ``+p.join(`` · ``)+`` · ``));return o})};" + $game
 $uiText = Swap $uiText 'c=[...o?[{label:xt,item:o}]:[],' 'c=[...(globalThis.__twins?.(e)?.slice(0,globalThis.__shift?20:Math.max(1,3-(s?a.length:0)))??(o?[{label:xt,item:o}]:[])),' 'twin boxes'
 $uiText = Swap $uiText 'e.replaceChildren(R(`equipped`,c[t].label),' 'e.replaceChildren(R(c[t].cls??`equipped`,c[t].label),' 'twin colors'
 $uiText = Swap $uiText ',!n)return el(this.node);$c(e,this.node,t,' ',!n&&!globalThis.__twins?.(e)?.length)return el(this.node);$c(e,this.node,t,' 'twin equipped'
