@@ -31,7 +31,7 @@ if (-not (Test-Path $asar)) {
 $backup = "$asar.orig"
 
 # 업데이트 확인: GitHub의 version.txt가 더 크면 새 bat를 받아 자기 자신을 바꾸고 다시 실행
-$Ver = '1.11'
+$Ver = '1.12'
 $Repo = 'mastree-master/D2S-MyPatch'
 # raw.githubusercontent는 몇 분씩 예전 파일을 내주므로 캐시 없는 GitHub API로 받는다
 $raw = "https://api.github.com/repos/$Repo/contents"
@@ -456,4 +456,4 @@ Write-Host (T '  [OK] 패치 완료. 게임을 실행하세요.' '  [OK] Patched
 Write-Host (T "  원본 백업: $backup" "  Original backup: $backup")
 Write-Host (T '  적용한 기능' '  Enabled features') -ForegroundColor Cyan
 $on | ForEach-Object { Write-Host "    - $_" }
-if ($env:D2S_RELAUNCH) { Write-Host (T '  게임을 다시 실행합니다.' '  Starting the game.'); Start-Process (Join-Path $GameDir 'D2 Survivors.exe') }
+if ($env:D2S_RELAUNCH) { Write-Host (T '  게임을 다시 실행합니다.' '  Starting the game.'); Start-Process explorer.exe ('"' + (Join-Path $GameDir 'D2 Survivors.exe') + '"') }  # explorer로 켜야 게임 로그가 이 창에 안 찍힘
