@@ -31,7 +31,7 @@ if (-not (Test-Path $asar)) {
 $backup = "$asar.orig"
 
 # 업데이트 확인: GitHub의 version.txt가 더 크면 새 bat를 받아 자기 자신을 바꾸고 다시 실행
-$Ver = '1.12'
+$Ver = '1.13'
 $Repo = 'mastree-master/D2S-MyPatch'
 # raw.githubusercontent는 몇 분씩 예전 파일을 내주므로 캐시 없는 GitHub API로 받는다
 $raw = "https://api.github.com/repos/$Repo/contents"
@@ -117,6 +117,75 @@ try { (Get-Content $optFile -Raw -Encoding UTF8 | ConvertFrom-Json).PSObject.Pro
 $hasFont = Test-Path (Join-Path $__root 'kodia.ttf')
 $pv = if ($game -match 'globalThis\.__d2sv=([\d.]+);') { $Matches[1] } else { '' }
 
+# 패치 기록 (선택 창 오른쪽에 표시). 새 버전은 맨 위에 추가
+$changelog = @'
+1.13
+- 선택 창 오른쪽에 패치 기록 표시
+- 게임 안 패치 기록 (F10)
+- 알림에서 패치하고 게임이 다시 켜지면 패치 창 자동으로 닫힘
+
+1.12
+- 알림에서 패치 후 게임 다시 켤 때 패치 창에 게임 기록이 찍히지 않게
+
+1.11
+- 스킬 붙은 매직 부적도 창고로 (매직 부적 스킬 옵션 인식 수정)
+- AFK 화면 위에도 업데이트 알림 표시
+
+1.10
+- 게임 안 업데이트 확인을 게임 본체에서 (알림 안 뜨던 문제 수정)
+
+1.09
+- 업데이트 확인 주기 2분
+
+1.08
+- FPS 표시 옆에 패치 버전 표시
+
+1.07
+- 업데이트 알림 클릭 → 게임 종료 → 패치 창 자동 실행 → 적용하면 게임 다시 실행
+
+1.06
+- 업데이트 확인 주기 30분 → 5분
+
+1.05
+- 교체 창: 이전 값 빨강 / 새 값 초록, 한 옵션 한 줄
+
+1.04
+- 게임 안 업데이트 알림은 패치할 때까지 계속 표시
+
+1.03
+- 클리어 후 자동 진행 방식: 같은 단계 계속 반복 / 한 단계씩 올라가기
+- 업데이트 받기 오류 수정
+
+1.02
+- 업데이트 확인을 GitHub API로 (예전 버전이 잘못 뜨던 문제)
+- 낮은 버전으로 덮어쓰지 않도록 막음
+
+1.01
+- 명암 조절 Home / End
+- 시체 숨김
+- FPS 표시 (F9), FPS 제한
+- 렌더링 해상도 조절
+
+1.00
+- 기능 선택 창: 체크한 기능만 적용, 조절값 저장
+- 밝기 조절 PageUp / PageDown
+- 스킬 붙은 부적은 창고로
+- 교체 창은 바뀐 옵션만, 획득 목록 줄에 마우스 올리면 옵션
+
+v1 ~ v5 (이전 번호)
+- bat 하나로 패치/복구, GitHub 자동 업데이트
+- 배속 (F7), AFK 화면에 배속·게임 시간 표시
+- 예전 버전 패치 위에 바로 덮어쓰기
+
+처음 버전
+- 자동 습득·등록·교체·판매, 룬워드 중복 정리
+- 획득 목록, 교체 창, 되돌리기, 툴팁 비교 상자, 숨겨진 값
+- 포털 자동 입장, 클리어 후 자동 재시작, 카운트다운
+- 창 열어도 안 멈춤, B 창고, Ctrl+클릭 창고로
+- AFK 모드 (F8), 최소화해도 안 멈춤
+- 순위표 전송 차단, 폰트 교체
+'@
+
 if (-not $Action) {
     Add-Type -AssemblyName System.Windows.Forms, System.Drawing
     [Windows.Forms.Application]::EnableVisualStyles()
@@ -156,7 +225,13 @@ if (-not $Action) {
     $bRestore = New-Object Windows.Forms.Button; $bRestore.Text = T '원본으로 복구' 'Restore original'; $bRestore.AutoSize = $true; $bRestore.DialogResult = 'No'; $bRestore.Enabled = $patched
     $bClose = New-Object Windows.Forms.Button; $bClose.Text = T '닫기' 'Close'; $bClose.AutoSize = $true; $bClose.DialogResult = 'Cancel'
     $bp.Controls.AddRange(@($bApply, $bRestore, $bClose)); $p.Controls.Add($bp)
-    $f.Controls.Add($p); $f.AcceptButton = $bApply; $f.CancelButton = $bClose
+    $row = New-Object Windows.Forms.FlowLayoutPanel; $row.AutoSize = $true; $row.WrapContents = $false
+    $lg = New-Object Windows.Forms.TextBox; $lg.Multiline = $true; $lg.ReadOnly = $true; $lg.ScrollBars = 'Vertical'; $lg.BackColor = 'White'
+    $lg.Text = (T '패치 기록' 'Patch log') + "`r`n`r`n" + ($changelog -replace "`r?`n", "`r`n"); $lg.Margin = '16,0,0,0'
+    $row.Controls.Add($p); $row.Controls.Add($lg)
+    $f.Controls.Add($row); $f.AcceptButton = $bApply; $f.CancelButton = $bClose
+    $lg.Size = New-Object Drawing.Size(360, $p.PreferredSize.Height)
+    if ($env:D2S_SHOT) { $f.Add_Shown({ $b = New-Object Drawing.Bitmap($f.Width, $f.Height); $f.DrawToBitmap($b, (New-Object Drawing.Rectangle(0, 0, $f.Width, $f.Height))); $b.Save($env:D2S_SHOT); $f.Close() }) }
     $res = $f.ShowDialog()
     if ($res -eq 'Yes') {
         $Action = 'patch'
@@ -318,6 +393,11 @@ if ([int]$O.res -gt 0) {
     $uiText = Swap $uiText 'apply(e){let t=this.app.renderer;' ('apply(e){e=' + $rv + ';let t=this.app.renderer;') 'render res apply'
 }
 
+# 게임 안 패치 기록 (F10으로 열고 닫기)
+$game = 'globalThis.__plog=' + ($changelog | ConvertTo-Json) + ';document.addEventListener(`keydown`,e=>{if(e.code!==`F10`)return;e.preventDefault(),e.stopPropagation();let o=document.getElementById(`__plog`);if(o)return o.remove();o=document.createElement(`div`),o.id=`__plog`,o.style.cssText=`position:fixed;right:20px;top:60px;bottom:60px;width:440px;overflow:auto;z-index:10003;background:#000e;color:#ddd;border:1px solid #fc6;padding:10px 14px;font:14px sans-serif;line-height:1.5;white-space:pre-line`,o.textContent=`' + (T '패치 기록' 'Patch log') + ' v' + $Ver + ' (F10 ' + (T '닫기' 'close') + ')
+
+`+globalThis.__plog,document.body.append(o)},!0);' + $game
+
 # 패치 버전 표시: 다음 실행 때 예전 버전인지 판단용
 $game = 'globalThis.__d2sv=' + $Ver + ';' + $game
 
@@ -457,3 +537,4 @@ Write-Host (T "  원본 백업: $backup" "  Original backup: $backup")
 Write-Host (T '  적용한 기능' '  Enabled features') -ForegroundColor Cyan
 $on | ForEach-Object { Write-Host "    - $_" }
 if ($env:D2S_RELAUNCH) { Write-Host (T '  게임을 다시 실행합니다.' '  Starting the game.'); Start-Process explorer.exe ('"' + (Join-Path $GameDir 'D2 Survivors.exe') + '"') }  # explorer로 켜야 게임 로그가 이 창에 안 찍힘
+if ($env:D2S_RELAUNCH) { Start-Sleep 2; Stop-Process -Id (Get-CimInstance Win32_Process -Filter "ProcessId=$PID").ParentProcessId -ErrorAction SilentlyContinue; exit }

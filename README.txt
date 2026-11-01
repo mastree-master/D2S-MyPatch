@@ -76,6 +76,7 @@ D2 Survivors 편의 패치 (D2S-MyPatch)
   - PageUp/Down: 밝기 조절
   - Home/End  : 명암 조절
   - F9         : FPS 표시 켜기/끄기
+  - F10        : 패치 기록 보기
   - F8         : AFK 모드 켜기/끄기
   - 캐릭터/인벤/스킬/퀘스트 창을 열어도 게임이 멈추지 않음 (Esc 만 일시정지)
 
