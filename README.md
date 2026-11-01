@@ -64,7 +64,7 @@ D2 Survivors를 편하게 파밍할 수 있게 해 주는 비공식 패치입니
 
 
 ### 비교 상자 · 창고
-![비교 상자](docs/shift-compare.png)
+![룬워드 아이템 찾기 (Shift)](docs/shift-compare.webp)
 ![B 창고](docs/stash.webp)
 
 ### 설명서 (F6) · 패치 기록 (F10)
