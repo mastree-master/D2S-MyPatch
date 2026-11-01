@@ -31,7 +31,7 @@ if (-not (Test-Path $asar)) {
 $backup = "$asar.orig"
 
 # 업데이트 확인: GitHub의 version.txt가 더 크면 새 bat를 받아 자기 자신을 바꾸고 다시 실행
-$Ver = '1.14'
+$Ver = '1.15'
 $Repo = 'mastree-master/D2S-MyPatch'
 # raw.githubusercontent는 몇 분씩 예전 파일을 내주므로 캐시 없는 GitHub API로 받는다
 $raw = "https://api.github.com/repos/$Repo/contents"
@@ -112,7 +112,7 @@ $feat = [ordered]@{
     fps = T 'FPS 표시 (F9)' 'Show FPS (F9)'
     font = T '폰트 교체 (kodia.ttf 있을 때)' 'Font replace (needs kodia.ttf)'
 }
-$O = @{ automode = 'same'; delay = 4; brightness = 100; contrast = 100; logn = 15; res = 0; fpscap = 0 }
+$O = @{ logsize = 0; automode = 'same'; delay = 4; brightness = 100; contrast = 100; logn = 15; res = 0; fpscap = 0 }
 foreach ($k in $feat.Keys) { $O[$k] = $true }
 try { (Get-Content $optFile -Raw -Encoding UTF8 | ConvertFrom-Json).PSObject.Properties | ForEach-Object { $O[$_.Name] = $_.Value } } catch {}
 $hasFont = Test-Path (Join-Path $__root 'kodia.ttf')
@@ -120,6 +120,11 @@ $pv = if ($game -match 'globalThis\.__d2sv=([\d.]+);') { $Matches[1] } else { ''
 
 # 패치 기록 (선택 창 오른쪽에 표시). 새 버전은 맨 위에 추가
 $changelog = @'
+1.15
+- 화면 왼쪽 아래에 버전 · F10 패치 기록 안내
+- F10 창 맨 위와 패치 창에 적용 기능 한 줄 요약 (✓ 적용 / ✗ 안 함)
+- 획득 목록·교체 창 글자 크기를 화면 폭에 맞춤 (FHD 등), 선택 창에서 직접 지정 가능
+
 1.14
 - GitHub 사용 한도 초과로 업데이트가 안 받아지던 문제 수정
 - 게임 안 확인은 한도 없는 주소로 1분마다
@@ -222,6 +227,7 @@ if (-not $Action) {
     $nDelay = Num (T '자동 진행 대기 (초)' 'Auto delay (s)') $O.delay 1 30 1
     $nBright = Num (T '기본 밝기 (%)' 'Default brightness (%)') $O.brightness 50 200 5
     $nLog = Num (T '획득 목록 줄 수' 'Pickup log lines') $O.logn 5 40 1
+    $nLogSize = Num (T '획득 목록 글자 크기 (px, 0 = 화면에 맞춤)' 'Pickup log font (px, 0 = auto)') $O.logsize 0 30 1
     $nContrast = Num (T '기본 명암 (%)' 'Default contrast (%)') $O.contrast 50 200 5
     $nRes = Num (T '렌더링 해상도 (%, 0 = 자동)' 'Render resolution (%, 0 = auto)') $O.res 0 200 25
     $nCap = Num (T 'FPS 제한 (0 = 제한 없음)' 'FPS cap (0 = none)') $O.fpscap 0 240 10
@@ -241,7 +247,7 @@ if (-not $Action) {
     if ($res -eq 'Yes') {
         $Action = 'patch'
         foreach ($k in $feat.Keys) { $O[$k] = $cb[$k].Checked }
-        $O.automode = @('same', 'next')[$cMode.SelectedIndex]; $O.delay = [int]$nDelay.Value; $O.brightness = [int]$nBright.Value; $O.logn = [int]$nLog.Value
+        $O.logsize = [int]$nLogSize.Value; $O.automode = @('same', 'next')[$cMode.SelectedIndex]; $O.delay = [int]$nDelay.Value; $O.brightness = [int]$nBright.Value; $O.logn = [int]$nLog.Value
         $O.contrast = [int]$nContrast.Value; $O.res = [int]$nRes.Value; $O.fpscap = [int]$nCap.Value
         New-Item -ItemType Directory -Force (Split-Path $optFile) | Out-Null
         $O | ConvertTo-Json | Set-Content $optFile -Encoding UTF8
@@ -250,6 +256,8 @@ if (-not $Action) {
 }
 if (-not $hasFont) { $O.font = $false }
 $on = $feat.Keys | Where-Object { $O[$_] } | ForEach-Object { $feat[$_] }
+$short = [ordered]@{ carry = T '자동등록' 'stash'; pickup = T '즉시습득' 'pickup'; goldchest = T '골드·상자' 'gold'; overflow = T '꽉차면창고' 'overflow'; skillcharm = T '스킬부적창고' 'skillcharm'; log = T '획득목록' 'log'; swpop = T '교체창' 'swap'; twins = T '비교상자' 'compare'; hidden = T '숨은값' 'hidden'; auto = T '자동진행' 'auto'; nopause = T '창안멈춤' 'nopause'; stash = T 'B창고' 'Bstash'; afk = 'AFK'; speed = T '배속' 'speed'; bright = T '밝기명암' 'bright'; corpse = T '시체숨김' 'corpse'; fps = 'FPS'; font = T '폰트' 'font' }
+$applied = (($short.Keys | ForEach-Object { $(if ($O[$_]) { [char]0x2713 } else { [char]0x2717 }) + $short[$_] }) -join ' · ') + ' | ' + $(if ($O.auto) { $(if ($O.automode -eq 'next') { T '다음 단계' 'next tier' } else { T '같은 단계' 'same tier' }) + " $($O.delay)" + (T '초' 's') + ' · ' } else { '' }) + (T '해상도 ' 'res ') + $(if ([int]$O.res -gt 0) { "$($O.res)%" } else { T '자동' 'auto' }) + ' · ' + (T 'FPS 제한 ' 'FPS cap ') + $(if ([int]$O.fpscap -gt 0) { $O.fpscap } else { T '없음' 'none' })
 
 if ($Action -eq 'restore') {
     if (-not $patched) { Fail (T '패치가 적용되어 있지 않습니다. 복구할 것이 없습니다.' 'The patch is not applied. Nothing to restore.') }
@@ -346,9 +354,9 @@ if ($O.skillcharm) {
 }
 # 주운 아이템을 화면 왼쪽 목록에 표시 (금색: 등록, 하늘색: 교체, 흰색: 인벤토리). 최근 15개
 $tags = '[`[' + (T '인벤' 'bag') + '] `,`[' + (T '등록' 'stashed') + '] `,`[' + (T '교체' 'upgraded') + '] `,`[' + (T '창고' 'stash') + '] `,`[' + (T '판매' 'sold') + '] `]'
-$game = 'globalThis.__sc=x=>{let r=[0,0,0,0];for(let b of x.stats??[]){let v=+b.value||0,s=b.stat;if(/^(coldlength|poisonlength|poisoncount|durability|maxdurability|item_extrablood)$/.test(s))continue;/^item_(allskills|addclassskills|addskill_tab|singleskill|nonclassskill|elemskill)$/.test(s)?r[0]+=v:s===`item_aura`?r[1]+=v:/^item_(skillon|charged_skill)/.test(s)?(r[1]+=+b.level||0,r[2]+=v):/^(item_armor|armorclass)/.test(s)?r[3]+=v:r[2]+=v}return r};globalThis.__gt=(x,y)=>{let a=__sc(x),b=__sc(y);for(let i=0;i<4;i++)if(a[i]!==b[i])return a[i]>b[i];return!1};globalThis.__bt=(s,e)=>{let u=s.uniques?.find(u=>u!==e&&u.rarity===e.rarity&&u.name===e.name);if(!u||e.rarity===`runeword`&&globalThis.__kd?.(u)!==globalThis.__kd?.(e))return!1;return __gt(e,u)};globalThis.__lg=(t,k,s,it)=>{let d=document.getElementById(`__lg`);d||(d=document.createElement(`div`),d.id=`__lg`,d.style.cssText=`position:fixed;left:8px;top:30%;z-index:9999;pointer-events:none;font:bold 16px sans-serif;line-height:1.35;text-shadow:0 0 3px #000,0 0 3px #000`,document.body.append(d));let l=document.createElement(`div`);l.style.color=[`#fff`,`#e8c060`,`#8cf`,`#c9a`,`#999`][k];l.textContent=' + $tags + '[k]+t+(s?` (`+s+`)`:``);(k===2&&globalThis.__swh?(l.__h=globalThis.__swh,globalThis.__swh=null):it&&(l.__h=`<div style="color:${l.style.color}">${l.textContent.replace(/</g,`&lt;`)}</div>`+(globalThis.__tip?.(it)??[]).map(x=>`<div>${String(x).replace(/</g,`&lt;`)}</div>`).join(``)),l.__h)&&(l.style.pointerEvents=`auto`,l.onpointerenter=()=>{let w=__swd(),r=l.getBoundingClientRect();w.innerHTML=l.__h;w.style.display=``;w.style.left=r.right+10+`px`;w.style.top=Math.max(4,Math.min(r.top,innerHeight-w.offsetHeight-4))+`px`;clearTimeout(w.__t)},l.onpointerleave=()=>{document.getElementById(`__sw`).style.display=`none`});k===2&&globalThis.__swu&&(()=>{let f=globalThis.__swu,b=document.createElement(`span`);globalThis.__swu=null;b.textContent=` [' + (T '되돌리기' 'Undo') + ']`;b.style.cssText=`color:#f96;cursor:pointer;pointer-events:auto`;b.onpointerdown=b.onmousedown=x=>{x.stopPropagation();x.preventDefault();f()?(l.style.textDecoration=`line-through`,b.textContent=` [' + (T '되돌림' 'Undone') + ']`,b.onpointerdown=b.onmousedown=null):b.textContent=` [' + (T '불가' 'Failed') + ']`};l.append(b)})();d.prepend(l);for(;d.children.length>' + $O.logn + ';)d.lastChild.remove()};' + $game
+$game = 'globalThis.__sc=x=>{let r=[0,0,0,0];for(let b of x.stats??[]){let v=+b.value||0,s=b.stat;if(/^(coldlength|poisonlength|poisoncount|durability|maxdurability|item_extrablood)$/.test(s))continue;/^item_(allskills|addclassskills|addskill_tab|singleskill|nonclassskill|elemskill)$/.test(s)?r[0]+=v:s===`item_aura`?r[1]+=v:/^item_(skillon|charged_skill)/.test(s)?(r[1]+=+b.level||0,r[2]+=v):/^(item_armor|armorclass)/.test(s)?r[3]+=v:r[2]+=v}return r};globalThis.__gt=(x,y)=>{let a=__sc(x),b=__sc(y);for(let i=0;i<4;i++)if(a[i]!==b[i])return a[i]>b[i];return!1};globalThis.__bt=(s,e)=>{let u=s.uniques?.find(u=>u!==e&&u.rarity===e.rarity&&u.name===e.name);if(!u||e.rarity===`runeword`&&globalThis.__kd?.(u)!==globalThis.__kd?.(e))return!1;return __gt(e,u)};globalThis.__lg=(t,k,s,it)=>{let d=document.getElementById(`__lg`);d||(d=document.createElement(`div`),d.id=`__lg`,d.style.cssText=`position:fixed;left:8px;top:30%;z-index:9999;pointer-events:none;font:bold ' + $(if ([int]$O.logsize -gt 0) { "$($O.logsize)px" } else { 'clamp(11px,0.75vw,16px)' }) + ' sans-serif;max-width:32vw;line-height:1.35;text-shadow:0 0 3px #000,0 0 3px #000`,document.body.append(d));let l=document.createElement(`div`);l.style.color=[`#fff`,`#e8c060`,`#8cf`,`#c9a`,`#999`][k];l.textContent=' + $tags + '[k]+t+(s?` (`+s+`)`:``);(k===2&&globalThis.__swh?(l.__h=globalThis.__swh,globalThis.__swh=null):it&&(l.__h=`<div style="color:${l.style.color}">${l.textContent.replace(/</g,`&lt;`)}</div>`+(globalThis.__tip?.(it)??[]).map(x=>`<div>${String(x).replace(/</g,`&lt;`)}</div>`).join(``)),l.__h)&&(l.style.pointerEvents=`auto`,l.onpointerenter=()=>{let w=__swd(),r=l.getBoundingClientRect();w.innerHTML=l.__h;w.style.display=``;w.style.left=r.right+10+`px`;w.style.top=Math.max(4,Math.min(r.top,innerHeight-w.offsetHeight-4))+`px`;clearTimeout(w.__t)},l.onpointerleave=()=>{document.getElementById(`__sw`).style.display=`none`});k===2&&globalThis.__swu&&(()=>{let f=globalThis.__swu,b=document.createElement(`span`);globalThis.__swu=null;b.textContent=` [' + (T '되돌리기' 'Undo') + ']`;b.style.cssText=`color:#f96;cursor:pointer;pointer-events:auto`;b.onpointerdown=b.onmousedown=x=>{x.stopPropagation();x.preventDefault();f()?(l.style.textDecoration=`line-through`,b.textContent=` [' + (T '되돌림' 'Undone') + ']`,b.onpointerdown=b.onmousedown=null):b.textContent=` [' + (T '불가' 'Failed') + ']`};l.append(b)})();d.prepend(l);for(;d.children.length>' + $O.logn + ';)d.lastChild.remove()};' + $game
 # 교체 창: 왼쪽 목록 옆에 이전/새 옵션 비교 (바뀐 줄만 색 표시), 20초 뒤 닫힘. 왼쪽 목록의 [교체] 줄에 마우스를 올리면 다시 표시
-$game = 'globalThis.__swd=()=>{let d=document.getElementById(`__sw`);d||(d=document.createElement(`div`),d.id=`__sw`,d.style.cssText=`position:fixed;z-index:9999;pointer-events:none;font:15px sans-serif;line-height:1.35;background:#000d;border:1px solid #8cf;padding:8px 10px;white-space:nowrap;color:#ccc`,document.body.append(d));return d};globalThis.__sw=(n,o,e,l)=>{let d=__swd();let a=globalThis.__tip?.(o)??[],b=globalThis.__tip?.(e)??[],h=(t,c)=>`<div style="color:${c}">${String(t).replace(/</g,`&lt;`)}</div>`;globalThis.__swh=d.innerHTML=h((l?.[0]??`[' + (T '교체' 'Upgraded') + '] `)+n,`#8cf`)+h(globalThis.__slot?.(e)??``,`#aaa`)+h(`' + (T '바뀐 옵션' 'Changes') + '`,`#fc6`)+Array.from({length:Math.max(a.length,b.length)},(_,i)=>a[i]!==b[i]?`<div><span style="color:#e88">${String(a[i]??`-`).replace(/</g,`&lt;`)}</span><span style="color:#888"> → </span><span style="color:#8e8">${String(b[i]??`-`).replace(/</g,`&lt;`)}</span></div>`:``).join(``)+h(`' + (T '옵션 총합' 'Total') + '`,`#fc6`)+[[o,`' + (T '이전' 'Old') + '`,`#e88`],[e,`' + (T '새것' 'New') + '`,`#8e8`]].map(([x,t,c])=>{let[s,u,a,f]=__sc(x);return h(`${t}: ' + (T '스킬' 'skill') + ' ${s} · ' + (T '오라·발동' 'aura·proc') + ' ${u} · ' + (T '그 외' 'other') + ' ${a} · ' + (T '방어' 'def') + ' ${f}`,c)}).join(``);d.style.display=``;requestAnimationFrame(()=>{let g=document.getElementById(`__lg`)?.getBoundingClientRect();d.style.left=(g?g.right:250)+10+`px`;d.style.top=Math.max(4,Math.min(g?g.top:innerHeight*.35,innerHeight-d.offsetHeight-4))+`px`});clearTimeout(d.__t);d.__t=setTimeout(()=>d.style.display=`none`,2e4)};' + $game
+$game = 'globalThis.__swd=()=>{let d=document.getElementById(`__sw`);d||(d=document.createElement(`div`),d.id=`__sw`,d.style.cssText=`position:fixed;z-index:9999;pointer-events:none;font:' + $(if ([int]$O.logsize -gt 0) { "$([int]$O.logsize - 1)px" } else { 'clamp(11px,0.7vw,15px)' }) + ' sans-serif;line-height:1.35;background:#000d;border:1px solid #8cf;padding:8px 10px;white-space:nowrap;color:#ccc`,document.body.append(d));return d};globalThis.__sw=(n,o,e,l)=>{let d=__swd();let a=globalThis.__tip?.(o)??[],b=globalThis.__tip?.(e)??[],h=(t,c)=>`<div style="color:${c}">${String(t).replace(/</g,`&lt;`)}</div>`;globalThis.__swh=d.innerHTML=h((l?.[0]??`[' + (T '교체' 'Upgraded') + '] `)+n,`#8cf`)+h(globalThis.__slot?.(e)??``,`#aaa`)+h(`' + (T '바뀐 옵션' 'Changes') + '`,`#fc6`)+Array.from({length:Math.max(a.length,b.length)},(_,i)=>a[i]!==b[i]?`<div><span style="color:#e88">${String(a[i]??`-`).replace(/</g,`&lt;`)}</span><span style="color:#888"> → </span><span style="color:#8e8">${String(b[i]??`-`).replace(/</g,`&lt;`)}</span></div>`:``).join(``)+h(`' + (T '옵션 총합' 'Total') + '`,`#fc6`)+[[o,`' + (T '이전' 'Old') + '`,`#e88`],[e,`' + (T '새것' 'New') + '`,`#8e8`]].map(([x,t,c])=>{let[s,u,a,f]=__sc(x);return h(`${t}: ' + (T '스킬' 'skill') + ' ${s} · ' + (T '오라·발동' 'aura·proc') + ' ${u} · ' + (T '그 외' 'other') + ' ${a} · ' + (T '방어' 'def') + ' ${f}`,c)}).join(``);d.style.display=``;requestAnimationFrame(()=>{let g=document.getElementById(`__lg`)?.getBoundingClientRect();d.style.left=(g?g.right:250)+10+`px`;d.style.top=Math.max(4,Math.min(g?g.top:innerHeight*.35,innerHeight-d.offsetHeight-4))+`px`});clearTimeout(d.__t);d.__t=setTimeout(()=>d.style.display=`none`,2e4)};' + $game
 # 자동 진행 카운트다운 표시 (화면 위쪽 가운데)
 $game = 'globalThis.__cdx=()=>{let d=document.getElementById(`__cd`);d&&(clearInterval(d.__i),d.remove())};globalThis.__cd=(s,t)=>{__cdx();let d=document.createElement(`div`),e=Date.now()+s*1e3;d.id=`__cd`;d.style.cssText=`position:fixed;left:50%;top:18%;transform:translateX(-50%);z-index:9999;pointer-events:none;font:bold 20px sans-serif;color:#e8c060;text-shadow:0 0 4px #000,0 0 4px #000`;document.body.append(d);let u=()=>{let r=Math.ceil((e-Date.now())/1e3);r<=0?__cdx():d.textContent=t.replace(`#`,r)};u();d.__i=setInterval(u,200)};' + $game
 $game = Swap $game 'carry:e=>this.carry(e),' "carry:e=>{let k=$canKeep(this.save,e)?1:__bt(this.save,e)?2:0,r=(globalThis.__st=0,this.carry(e));globalThis.__st&&!k&&(k=globalThis.__st===2?4:3);let q=e.rarity===``runeword``&&k!==1&&k!==2&&this.save.uniques?.find(x=>x!==e&&x.rarity===e.rarity&&x.name===e.name);return r&&globalThis.__afk&&__afkAdd(k,e.rarity),r&&__lg($name(e.name,e.rarity,e.base),k,(globalThis.__slot?.(e)??````)+(q?`` → $(T '등록본' 'stashed'): ``+__slot(q):````),e),r},isNew:e=>$canKeep(this.save,e)||__bt(this.save,e)||e.rarity===``runeword``," 'world'
@@ -399,9 +407,8 @@ if ([int]$O.res -gt 0) {
 }
 
 # 게임 안 패치 기록 (F10으로 열고 닫기)
-$game = 'globalThis.__plog=' + ($changelog | ConvertTo-Json) + ';document.addEventListener(`keydown`,e=>{if(e.code!==`F10`)return;e.preventDefault(),e.stopPropagation();let o=document.getElementById(`__plog`);if(o)return o.remove();o=document.createElement(`div`),o.id=`__plog`,o.style.cssText=`position:fixed;right:20px;top:60px;bottom:60px;width:440px;overflow:auto;z-index:10003;background:#000e;color:#ddd;border:1px solid #fc6;padding:10px 14px;font:14px sans-serif;line-height:1.5;white-space:pre-line`,o.textContent=`' + (T '패치 기록' 'Patch log') + ' v' + $Ver + ' (F10 ' + (T '닫기' 'close') + ')
-
-`+globalThis.__plog,document.body.append(o)},!0);' + $game
+$game = 'globalThis.__plog=' + ($changelog | ConvertTo-Json) + ';document.addEventListener(`keydown`,e=>{if(e.code!==`F10`)return;e.preventDefault(),e.stopPropagation();let o=document.getElementById(`__plog`);if(o)return o.remove();o=document.createElement(`div`),o.id=`__plog`,o.style.cssText=`position:fixed;right:20px;top:60px;bottom:60px;width:440px;overflow:auto;z-index:10003;background:#000e;color:#ddd;border:1px solid #fc6;padding:10px 14px;font:14px sans-serif;line-height:1.5;white-space:pre-line`,o.textContent=`' + (T '패치 기록' 'Patch log') + ' v' + $Ver + ' (F10 ' + (T '닫기' 'close') + ')\n`+globalThis.__papp+`\n\n`+globalThis.__plog,document.body.append(o)},!0);setTimeout(()=>{let h=document.createElement(`div`);h.style.cssText=`position:fixed;left:6px;bottom:4px;z-index:9997;color:#aaa;opacity:.75;font:12px sans-serif;pointer-events:none;text-shadow:0 0 2px #000`,h.textContent=`D2S v' + $Ver + ' · F10 ' + (T '패치 기록' 'patch log') + '`,document.body.append(h)},3e3);' + $game
+$game = 'globalThis.__papp=' + ($applied | ConvertTo-Json) + ';' + $game
 
 # 패치 버전 표시: 다음 실행 때 예전 버전인지 판단용
 $game = 'globalThis.__d2sv=' + $Ver + ';' + $game
@@ -541,5 +548,6 @@ Write-Host (T '  [OK] 패치 완료. 게임을 실행하세요.' '  [OK] Patched
 Write-Host (T "  원본 백업: $backup" "  Original backup: $backup")
 Write-Host (T '  적용한 기능' '  Enabled features') -ForegroundColor Cyan
 $on | ForEach-Object { Write-Host "    - $_" }
+Write-Host "  $applied"
 if ($env:D2S_RELAUNCH) { Write-Host (T '  게임을 다시 실행합니다.' '  Starting the game.'); Start-Process explorer.exe ('"' + (Join-Path $GameDir 'D2 Survivors.exe') + '"') }  # explorer로 켜야 게임 로그가 이 창에 안 찍힘
 if ($env:D2S_RELAUNCH) { Start-Sleep 2; Stop-Process -Id (Get-CimInstance Win32_Process -Filter "ProcessId=$PID").ParentProcessId -ErrorAction SilentlyContinue; exit }
