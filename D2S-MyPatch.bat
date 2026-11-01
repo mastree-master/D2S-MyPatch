@@ -56,7 +56,7 @@ if (-not (Test-Path $asar)) {
 $backup = "$asar.orig"
 
 # 업데이트 확인: GitHub의 version.txt가 더 크면 새 bat를 받아 자기 자신을 바꾸고 다시 실행
-$Ver = '1.41'
+$Ver = '1.42'
 $Repo = 'mastree-master/D2S-MyPatch'
 # raw.githubusercontent는 몇 분씩 예전 파일을 내주므로 캐시 없는 GitHub API로 받는다
 $raw = "https://api.github.com/repos/$Repo/contents"
@@ -146,6 +146,9 @@ $pv = if ($game -match 'globalThis\.__d2sv=([\d.]+);') { $Matches[1] } else { ''
 
 # 패치 기록 (선택 창 오른쪽에 표시). 새 버전은 맨 위에 추가
 $changelog = @'
+1.42
+- B로 창고 닫을 때 일시정지 메뉴가 뜨던 문제 수정 (창 닫기 기능을 직접 호출)
+
 1.41
 - B로 연 창고를 B로 닫기가 안 되던 문제 수정
 - 드롭 확률 계산기 (F3): 공포 단계 · 매직 찬스 · 몬스터 종류를 넣으면 룬워드 · 유니크별로 아이템 1개당 확률과 몇 개에 1번인지 (게임 공식과 데이터 그대로)
@@ -500,7 +503,7 @@ $snap = @($game, $keepText, $uiText, $mainText, $langText, $header); try {
 $game = Swap $game 'this.characterView(n,t,e===`town`),{...this.gearActions(t,()=>this.openCharacter(e,t),e===`town`)' 'this.characterView(n,t,e===`town`||!!this.__stash),{...this.gearActions(t,()=>this.openCharacter(e,t),e===`town`||!!this.__stash)' 'stash key view'
 $game = Swap $game 'close:()=>{this.putBack(),this.tomeRead=null,' 'close:()=>{this.__stash=0,this.putBack(),this.tomeRead=null,' 'stash key close'
 $game = Swap $game '(e.code===`KeyC`||e.code===`KeyI`)&&this.state===`playing`?this.openCharacter(`playing`)' 'e.code===`KeyB`&&Date.now()-(globalThis.__bjust||0)>300&&(this.state===`playing`||this.state===`camp`&&!this.swapping)?(this.__stash=1,this.openCharacter(this.state)):(e.code===`KeyC`||e.code===`KeyI`)&&this.state===`playing`?(this.__stash=0,this.openCharacter(`playing`))' 'stash key'
-$game = 'addEventListener(`keydown`,e=>{let g=globalThis.__gm;if(e.code!==`KeyB`||e.repeat||!g||g.state!==`character`||!g.__stash)return;e.preventDefault(),e.stopImmediatePropagation(),globalThis.__bjust=Date.now();dispatchEvent(new KeyboardEvent(`keydown`,{code:`Escape`,key:`Escape`,bubbles:!0}))},!0);' + $game
+$game = 'addEventListener(`keydown`,e=>{let g=globalThis.__gm;if(e.code!==`KeyB`||e.repeat||!g||g.state!==`character`||!g.__stash)return;e.preventDefault(),e.stopImmediatePropagation(),globalThis.__bjust=Date.now();let h=g.hud;(h?.d2?.onPanelClose??h?.charClose?.onclick)?.()},!0);' + $game
 } catch { if ("$_" -notlike 'D2SUNSUP*') { throw }; $game, $keepText, $uiText, $mainText, $langText, $header = $snap; $bad += 'stash' } }
 if ($O.auto) {
 $snap = @($game, $keepText, $uiText, $mainText, $langText, $header); try {
