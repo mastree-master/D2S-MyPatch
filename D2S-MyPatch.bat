@@ -418,6 +418,14 @@ $KeepTab = { param($page)
     $lq = New-Object Windows.Forms.Label; $lq.Text = T '검색' 'Search'; $lq.AutoSize = $true; $lq.Padding = '0,6,0,0'
     $sum = New-Object Windows.Forms.Label; $sum.AutoSize = $true; $sum.Padding = '8,6,0,0'; $sum.ForeColor = 'DarkBlue'
     $top.Controls.AddRange(@($lc, $cat, $lq, $q, $miss, $lf, $vf, $sum, $bAll, $bNone, $lb1, $bv, $bb)); $top.SetFlowBreak($sum, $true)
+    foreach ($x in $top.Controls) {
+        if ($x -eq $reg) { continue }
+        if ($x -eq $sum) { $x.Margin = "3,8,3,2"; continue }
+        $tw = [Windows.Forms.TextRenderer]::MeasureText($x.Text, $f.Font).Width
+        if ($x -is [Windows.Forms.Label] -or $x -is [Windows.Forms.CheckBox]) { $w = $tw + $(if ($x -is [Windows.Forms.CheckBox]) { 26 } else { 6 }); $x.AutoSize = $false; $x.Padding = 0; $x.Size = New-Object Drawing.Size($w, 30); $x.Margin = '3,2,3,2'; if ($x -is [Windows.Forms.Label]) { $x.TextAlign = 'MiddleLeft' } else { $x.CheckAlign = 'MiddleLeft'; $x.TextAlign = 'MiddleLeft' } }
+        elseif ($x -is [Windows.Forms.Button]) { $w = $tw + 36; $x.AutoSize = $false; $x.Size = New-Object Drawing.Size($w, 30); $x.Margin = '3,2,3,2' }
+        else { $x.Margin = New-Object Windows.Forms.Padding(3, (2 + [Math]::Max(0, [int]((30 - $x.Height) / 2))), 3, 2) }
+    }
     $g = New-Object Windows.Forms.DataGridView; $g.Dock = 'Fill'; $g.AllowUserToAddRows = $false; $g.AllowUserToDeleteRows = $false; $g.RowHeadersVisible = $false; $g.SelectionMode = 'CellSelect'; $g.EditMode = 'EditOnEnter'; $g.BackgroundColor = 'White'
     $cs = New-Object Windows.Forms.DataGridViewCheckBoxColumn; $cs.Name = 'sel'; $cs.HeaderText = T '선택' 'Pick'; $cs.Width = 50; [void]$g.Columns.Add($cs)
     foreach ($c in @(@('c', (T '구분' 'Type'), 70), @('n', (T '이름' 'Name'), 190), @('b', (T '부위 · 옵션' 'Slot · stat'), 260))) { $col = New-Object Windows.Forms.DataGridViewTextBoxColumn; $col.Name = $c[0]; $col.HeaderText = $c[1]; $col.Width = $c[2]; $col.ReadOnly = $true; [void]$g.Columns.Add($col) }
