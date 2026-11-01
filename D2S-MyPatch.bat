@@ -31,7 +31,7 @@ if (-not (Test-Path $asar)) {
 $backup = "$asar.orig"
 
 # 업데이트 확인: GitHub의 version.txt가 더 크면 새 bat를 받아 자기 자신을 바꾸고 다시 실행
-$Ver = '1.10'
+$Ver = '1.11'
 $Repo = 'mastree-master/D2S-MyPatch'
 # raw.githubusercontent는 몇 분씩 예전 파일을 내주므로 캐시 없는 GitHub API로 받는다
 $raw = "https://api.github.com/repos/$Repo/contents"
@@ -262,7 +262,7 @@ $game = Swap $game 'carry(e){let t=this.inventoryOf' "carry(e){if($canKeep(this.
 }
 # 스킬 옵션이 붙은 부적은 인벤토리 대신 개인 → 공용 창고 빈자리로 (창고가 꽉 차면 인벤토리)
 if ($O.skillcharm) {
-    $game = Swap $game "let t=this.inventoryOf(this.world.player.cls),n=$fit(" ("if(globalThis.__kd?.(e)===``charm``&&(e.stats??[]).some(b=>/^item_(allskills|addclassskills|addskill_tab|singleskill|nonclassskill|elemskill)`$/.test(b.stat)))for(let k of $tabs){let a=$tab(this.save,this.world.player.cls,k),p=$fit(a,e,$sgrid);if(p)return $put(a,e,p),$save(this.save),globalThis.__st=1,!0}let t=this.inventoryOf(this.world.player.cls),n=$fit(") 'skill charm'
+    $game = Swap $game "let t=this.inventoryOf(this.world.player.cls),n=$fit(" ("if((e.type===``charm``||globalThis.__kd?.(e)===``charm``)&&[...(e.stats??[]),...(e.mods??[])].some(b=>/skill/i.test(b.stat)))for(let k of $tabs){let a=$tab(this.save,this.world.player.cls,k),p=$fit(a,e,$sgrid);if(p)return $put(a,e,p),$save(this.save),globalThis.__st=1,!0}let t=this.inventoryOf(this.world.player.cls),n=$fit(") 'skill charm'
 }
 # 주운 아이템을 화면 왼쪽 목록에 표시 (금색: 등록, 하늘색: 교체, 흰색: 인벤토리). 최근 15개
 $tags = '[`[' + (T '인벤' 'bag') + '] `,`[' + (T '등록' 'stashed') + '] `,`[' + (T '교체' 'upgraded') + '] `,`[' + (T '창고' 'stash') + '] `,`[' + (T '판매' 'sold') + '] `]'
@@ -322,7 +322,7 @@ if ([int]$O.res -gt 0) {
 $game = 'globalThis.__d2sv=' + $Ver + ';' + $game
 
 # 업데이트 알림 표시 함수 (게임 본체가 새 버전을 찾으면 호출) GitHub 버전 확인, 새 버전 있으면 오른쪽 아래 알림 (클릭하면 닫힘)
-$game = 'globalThis.__updShow=t=>{let L=t.split(/\r?\n/);if(+L[0]>' + $Ver + '&&!document.getElementById(`__upd`)){let d=document.createElement(`div`);d.id=`__upd`,d.__s=`' + (T '패치 업데이트 있음 v' 'Patch update v') + '${L[0].trim()} (' + (T '클릭하면 바로 패치' 'click to patch now') + ')`,d.__n=L.slice(1).filter(x=>x.trim()).join(`\n`),d.textContent=d.__s+`\n`+d.__n,d.style.cssText=`position:fixed;right:8px;bottom:8px;z-index:9999;background:#000d;color:#fc6;border:1px solid #fc6;padding:6px 10px;font:14px sans-serif;cursor:pointer;white-space:pre-line;max-width:420px`,d.onclick=()=>{if(document.getElementById(`__updq`))return;let q=document.createElement(`div`),b=(t,f)=>{let x=document.createElement(`button`);x.textContent=t,x.style.cssText=`font:bold 15px sans-serif;margin:10px 6px 0;padding:6px 20px;background:#222;color:#fc6;border:1px solid #fc6;cursor:pointer`,x.onclick=f,q.append(x)};q.id=`__updq`,q.style.cssText=`position:fixed;left:50%;top:40%;transform:translate(-50%,-50%);z-index:10000;background:#000e;color:#ddd;border:1px solid #fc6;padding:16px 22px;font:15px sans-serif;text-align:center;white-space:pre-line`,q.textContent=`' + (T '게임을 끄고 지금 패치할까요?
+$game = 'globalThis.__updShow=t=>{let L=t.split(/\r?\n/);if(+L[0]>' + $Ver + '&&!document.getElementById(`__upd`)){let d=document.createElement(`div`);d.id=`__upd`,d.__s=`' + (T '패치 업데이트 있음 v' 'Patch update v') + '${L[0].trim()} (' + (T '클릭하면 바로 패치' 'click to patch now') + ')`,d.__n=L.slice(1).filter(x=>x.trim()).join(`\n`),d.textContent=d.__s+`\n`+d.__n,d.style.cssText=`position:fixed;right:8px;bottom:8px;z-index:10001;background:#000d;color:#fc6;border:1px solid #fc6;padding:6px 10px;font:14px sans-serif;cursor:pointer;white-space:pre-line;max-width:420px`,d.onclick=()=>{if(document.getElementById(`__updq`))return;let q=document.createElement(`div`),b=(t,f)=>{let x=document.createElement(`button`);x.textContent=t,x.style.cssText=`font:bold 15px sans-serif;margin:10px 6px 0;padding:6px 20px;background:#222;color:#fc6;border:1px solid #fc6;cursor:pointer`,x.onclick=f,q.append(x)};q.id=`__updq`,q.style.cssText=`position:fixed;left:50%;top:40%;transform:translate(-50%,-50%);z-index:10002;background:#000e;color:#ddd;border:1px solid #fc6;padding:16px 22px;font:15px sans-serif;text-align:center;white-space:pre-line`,q.textContent=`' + (T '게임을 끄고 지금 패치할까요?
 (진행 중인 판은 저장되지 않을 수 있습니다)' 'Close the game and patch now?
 (the current run may not be saved)') + '
 `,b(`' + (T '예' 'Yes') + '`,()=>{q.textContent=`' + (T '게임을 종료합니다...' 'Closing...') + '`,fetch(`https://d2s-update.invalid/run`).catch(()=>{})}),b(`' + (T '아니오' 'No') + '`,()=>q.remove()),document.body.append(q)},document.body.append(d)}};' + $game
