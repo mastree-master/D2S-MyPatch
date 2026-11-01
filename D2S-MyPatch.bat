@@ -148,7 +148,7 @@ $pv = if ($game -match 'globalThis\.__d2sv=([\d.]+);') { $Matches[1] } else { ''
 $changelog = @'
 1.58
 - 패치 창을 디아블로풍으로: 게임 메뉴 그림 배너 · 금색 제목, 어두운 배경, 게임 돌 버튼, 탭 · 표 · 입력칸 어두운 색 (게임 그림이 없으면 색만)
-- 기능 탭 스크롤 없이 한 화면: 기능은 2열 상자, 조절값은 2열 상자, 긴 이름 줄임
+- 기능 탭 스크롤 없이 한 화면: 기능 · 조절값을 같은 폭의 상자(금색 테두리 · 제목 띠)에 2열로, 조절값 입력칸 줄 맞춤
 - 보관 설정 탭: 맨 앞 선택 칸, 전체 선택 / 전체 해제(보이는 줄), "체크한 줄을 [인벤 · 판매 · 창고] (으)로 적용", 구분 · 검색 · 설정 필터(인벤만 · 판매만 · 창고만)
 - 패치 창 언어 판별을 여러 값으로 (가끔 영어로 뜨던 문제)
 
@@ -459,8 +459,16 @@ if (-not $Action) {
     $st.Text = if (-not $patched) { T '현재: 원본' 'Current: original' } elseif ($pv -eq $Ver) { T "현재: 패치 v$pv" "Current: patched v$pv" } else { T "현재: 예전 패치 ($pv) → 새 버전 v$Ver 로 덮어쓰기 가능" "Current: older patch ($pv) → can re-patch v$Ver" }
     $p.Controls.Add($st)
     function Box($title, $h) {
-        $gb = New-Object Windows.Forms.GroupBox; $gb.Text = $title; $gb.AutoSize = $true; $gb.AutoSizeMode = 'GrowAndShrink'; $gb.Padding = '8,6,8,6'; $gb.Margin = '0,6,0,0'
-        $fl = New-Object Windows.Forms.FlowLayoutPanel; $fl.FlowDirection = 'TopDown'; $fl.WrapContents = $true; $fl.AutoSize = $true; $fl.Location = New-Object Drawing.Point(8, 24); $fl.MaximumSize = New-Object Drawing.Size(0, $h)
+        $gb = New-Object Windows.Forms.Panel; $gb.Tag = $title; $gb.AutoSize = $true; $gb.AutoSizeMode = 'GrowAndShrink'; $gb.Padding = '10,34,12,10'; $gb.Margin = '0,8,0,0'
+        $gb.Add_Paint({ param($s, $e)
+            $g = $e.Graphics; $w = $s.Width; $h = $s.Height
+            $g.FillRectangle((New-Object Drawing.Drawing2D.LinearGradientBrush((New-Object Drawing.Rectangle(0, 0, $w, 26)), [Drawing.Color]::FromArgb(70, 50, 24), [Drawing.Color]::FromArgb(16, 12, 9), [single]0)), 1, 1, $w - 2, 25)
+            $g.DrawRectangle((New-Object Drawing.Pen([Drawing.Color]::FromArgb(150, 118, 64))), 0, 0, $w - 1, $h - 1)
+            $g.DrawRectangle((New-Object Drawing.Pen([Drawing.Color]::FromArgb(60, 46, 26))), 3, 3, $w - 7, $h - 7)
+            $g.DrawLine((New-Object Drawing.Pen([Drawing.Color]::FromArgb(150, 118, 64))), 1, 26, $w - 2, 26)
+            $g.TextRenderingHint = 'AntiAliasGridFit'; $g.DrawString($s.Tag, (New-Object Drawing.Font('Malgun Gothic', 11, [Drawing.FontStyle]::Bold)), (New-Object Drawing.SolidBrush([Drawing.Color]::FromArgb(232, 200, 120))), 10, 3)
+        })
+        $fl = New-Object Windows.Forms.FlowLayoutPanel; $fl.FlowDirection = 'TopDown'; $fl.WrapContents = $true; $fl.AutoSize = $true; $fl.Location = New-Object Drawing.Point(10, 34); $fl.MaximumSize = New-Object Drawing.Size(0, $h)
         $gb.Controls.Add($fl); $p.Controls.Add($gb); $fl
     }
     $cbp = Box (T '기능' 'Features') 300
@@ -472,14 +480,14 @@ if (-not $Action) {
     }
     function Num($label, $v, $min, $max, $step) {
         $r = New-Object Windows.Forms.FlowLayoutPanel; $r.AutoSize = $true; $r.WrapContents = $false
-        $l = New-Object Windows.Forms.Label; $l.Text = $label; $l.AutoSize = $true; $l.Padding = '0,6,0,0'
+        $l = New-Object Windows.Forms.Label; $l.Text = $label; $l.AutoSize = $false; $l.Size = New-Object Drawing.Size(230, 28); $l.Padding = '0,6,0,0'
         $n = New-Object Windows.Forms.NumericUpDown; $n.Minimum = $min; $n.Maximum = $max; $n.Increment = $step; $n.Value = [Math]::Min($max, [Math]::Max($min, [decimal]$v)); $n.Width = 70
         $r.Controls.Add($l); $r.Controls.Add($n); $r.Margin = '3,0,16,0'; $np.Controls.Add($r); $n
     }
     $np = Box (T '조절값' 'Settings') 175
     $mr = New-Object Windows.Forms.FlowLayoutPanel; $mr.AutoSize = $true; $mr.WrapContents = $false; $mr.Margin = '3,0,16,0'
-    $ml = New-Object Windows.Forms.Label; $ml.Text = T '클리어 후 자동 진행' 'After clear'; $ml.AutoSize = $true; $ml.Padding = '0,6,0,0'
-    $cMode = New-Object Windows.Forms.ComboBox; $cMode.DropDownStyle = 'DropDownList'; $cMode.Width = 200
+    $ml = New-Object Windows.Forms.Label; $ml.Text = T '클리어 후 자동 진행' 'After clear'; $ml.AutoSize = $false; $ml.Size = New-Object Drawing.Size(230, 28); $ml.Padding = '0,6,0,0'
+    $cMode = New-Object Windows.Forms.ComboBox; $cMode.DropDownStyle = 'DropDownList'; $cMode.Width = 170
     [void]$cMode.Items.AddRange(@((T '같은 단계 계속 반복' 'Repeat same tier'), (T '한 단계씩 올라가기' 'Go up one tier')))
     $cMode.SelectedIndex = [int]($O.automode -eq 'next')
     $mr.Controls.Add($ml); $mr.Controls.Add($cMode); $np.Controls.Add($mr)
@@ -500,7 +508,8 @@ if (-not $Action) {
     $lg = New-Object Windows.Forms.TextBox; $lg.Multiline = $true; $lg.ReadOnly = $true; $lg.ScrollBars = 'Vertical'; $lg.BackColor = 'White'
     $lg.Text = (T '패치 기록' 'Patch log') + "`r`n`r`n" + ($changelog -replace "`r?`n", "`r`n"); $lg.Margin = '16,0,0,0'
     $row.Controls.Add($p); $row.Controls.Add($lg)
-    foreach ($x in @($cbp, $np)) { $x.PerformLayout(); $x.Size = $x.PreferredSize; $x.Parent.PerformLayout() }; $p.PerformLayout()
+    foreach ($x in @($cbp, $np)) { $x.PerformLayout(); $x.Size = $x.PreferredSize; $x.Parent.PerformLayout() }
+    $bw = [Math]::Max($cbp.Parent.Width, $np.Parent.Width); foreach ($x in @($cbp, $np)) { $x.Parent.AutoSize = $false; $x.Parent.Size = New-Object Drawing.Size($bw, ($x.PreferredSize.Height + 46)) }; $p.PerformLayout()
     $lg.Size = New-Object Drawing.Size(360, $p.PreferredSize.Height)
     $tc = New-Object Windows.Forms.Panel; $tc.Size = New-Object Drawing.Size(($row.PreferredSize.Width + 70), ($row.PreferredSize.Height + 70))
     $t1 = New-Object Windows.Forms.Panel; $t1.Controls.Add($row); $t1.Padding = 8; $t2 = New-Object Windows.Forms.Panel; $t2.Padding = 8; $t2.Visible = $false
