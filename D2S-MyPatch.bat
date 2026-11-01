@@ -56,7 +56,7 @@ if (-not (Test-Path $asar)) {
 $backup = "$asar.orig"
 
 # 업데이트 확인: GitHub의 version.txt가 더 크면 새 bat를 받아 자기 자신을 바꾸고 다시 실행
-$Ver = '1.60'
+$Ver = '1.61'
 $Repo = 'mastree-master/D2S-MyPatch'
 # raw.githubusercontent는 몇 분씩 예전 파일을 내주므로 캐시 없는 GitHub API로 받는다
 $raw = "https://api.github.com/repos/$Repo/contents"
@@ -149,6 +149,9 @@ $pv = if ($game -match 'globalThis\.__d2sv=([\d.]+);') { $Matches[1] } else { ''
 
 # 패치 기록 (선택 창 오른쪽에 표시). 새 버전은 맨 위에 추가
 $changelog = @'
+1.61
+- 티리엘 등장(파편 10개 + 5막 보스 처치) 때 포털 자동 입장 안 함, 소리 + AFK 중이면 자동 정지
+
 1.60
 - AFK 자동 정지: AFK 화면에서 시간(분, 0 = 무제한)과 꽉 참(인벤 · 개인 창고 · 공유 1 · 2 · 3 중 체크한 곳이 전부 꽉 차면) 설정. 정지하면 소리 + 게임 일시정지, 클리어 후 자동 진행도 멈춤
 - AFK 기록 이어가기: 체크하면 AFK를 끄고 다시 켜도 게임 켠 뒤부터 합산 (끄면 켤 때마다 새로 시작)
@@ -766,7 +769,7 @@ $game = Swap $game 'showTierCleared(){let e=this.tierDone;if(!e)return this.toMe
 # 공포 단계 보스 처치 후 포털이 열리면 4초 뒤 자동 입장 (클리어 화면으로)
 $portal = Find $game ('this\.hud\.banner\(`A portal to \$\{' + $id + '\(t,' + $id + '\)\} has opened`\),!1\}') 'portal'
 $game = Swap $game $portal.Value ($portal.Value.Substring(0, $portal.Value.Length - 3) + 't.terror&&(__cd(' + $O.delay + ',`' + (T '#초 뒤 포털 입장' 'Entering portal in #s') + '`)),!1}') 'portal'
-try { $game = Swap $game 'o=Dr(r,a,!!n.portal?.through(t,e,a!==null&&a>=1.5))' ('o=Dr(r,a,!!n.portal?.through(t,e,a!==null&&a>=1.5)||!!(t.terror&&a!==null&&a>=' + $O.delay + '))') 'portal enter' } catch { if ("$_" -notlike 'D2SUNSUP:*') { throw }; $game = Swap $game 'o=jr(r,a,!!n.portal?.through(t,e,a!==null&&a>=1.5))' ('o=jr(r,a,!!n.portal?.through(t,e,a!==null&&a>=1.5)||!!(t.terror&&a!==null&&a>=' + $O.delay + '))') 'portal enter' }
+try { $game = Swap $game 'o=Dr(r,a,!!n.portal?.through(t,e,a!==null&&a>=1.5))' ('o=Dr(r,a,!!n.portal?.through(t,e,a!==null&&a>=1.5)||!!(t.terror&&a!==null&&a>=' + $O.delay + '&&!(n.tyrael&&!n.tyrael.spoke)))') 'portal enter' } catch { if ("$_" -notlike 'D2SUNSUP:*') { throw }; $game = Swap $game 'o=jr(r,a,!!n.portal?.through(t,e,a!==null&&a>=1.5))' ('o=jr(r,a,!!n.portal?.through(t,e,a!==null&&a>=1.5)||!!(t.terror&&a!==null&&a>=' + $O.delay + '&&!(n.tyrael&&!n.tyrael.spoke)))') 'portal enter' }
 } catch { if ("$_" -notlike 'D2SUNSUP*') { throw }; $game, $keepText, $uiText, $mainText, $langText, $header = $snap; $bad += 'auto' } }
 # AFK 모드 (F8): 화면을 검게 덮고 진행 상황·획득 목록·종료 버튼만 표시. 창을 내리거나 가려도 멈추지 않음
 if ($O.speed) {
@@ -802,7 +805,7 @@ $game = 'globalThis.__stD=()=>new Date().toLocaleDateString(`sv`);globalThis.__s
 } catch { if ("$_" -notlike 'D2SUNSUP*') { throw }; $game, $keepText, $uiText, $mainText, $langText, $header = $snap; $bad += 'stats' } }
 if ($O.shard) {
 # 빛의 파편(퀘스트 부서진 빛) 안내: 게임의 shards.planned(몇 번째 · 나타날 시각) / shards.at(위치)를 읽어 화면에 표시만 함
-$game = 'globalThis.__shd=()=>{let g=globalThis.__gm,w=g?.world,S=g?.shards,p=S?.planned,a=S?.at,P=w?.player,o=document.getElementById(`__shd`);if(!w||!P||!p||S.taken||w.farm||w.tristram||g.state!==`playing`){o&&(o.style.display=`none`);return}o||(o=document.createElement(`div`),o.id=`__shd`,o.style.cssText=`position:fixed;z-index:9999;pointer-events:none;font:bold 20px sans-serif;color:#fff6c8;text-shadow:0 0 4px #000,0 0 10px #fc6,0 0 18px #fc6;text-align:center;transform:translate(-50%,-50%);white-space:nowrap`,document.body.append(o));o.style.display=``;if(!a){let r=Math.max(0,Math.ceil(p.at-(w.time-w.actStart)));o.style.left=`50%`,o.style.top=`16%`,o.textContent=`' + (T '빛의 파편' 'Light shard') + ' ${p.shard}/10: ${r}' + (T '초 뒤 근처에 나타남' 's until it appears nearby') + '`;return}globalThis.__shdB!==p&&(globalThis.__shdB=p,globalThis.__beep?.(0));let x=a.x-P.x,y=a.y-P.y,v=w.view,W=v?.halfW||960,H=v?.halfH||540;if(!globalThis.__afk&&Math.abs(x)<W*.8&&Math.abs(y)<H*.8){o.style.display=`none`;return}let A=Math.atan2(y,x),R=Math.min(innerWidth,innerHeight)*.3;o.style.left=`${innerWidth/2+Math.cos(A)*R*1.3}px`,o.style.top=`${innerHeight/2+Math.sin(A)*R}px`,o.style.opacity=.55+.45*Math.abs(Math.sin(performance.now()/300)),o.innerHTML=`<div style="font-size:72px;line-height:1;color:#ffd75a;display:inline-block;transform:rotate(${A}rad)">➜</div><div>' + (T '빛의 파편' 'Light shard') + ' ${p.shard}/10 · ${Math.hypot(x/(2*W),y/(2*H)).toFixed(1)} ' + (T '화면' 'screens') + '${p.guarded?` · ' + (T '몬스터가 지킴' 'guarded') + '`:``}</div>`};setInterval(()=>{try{globalThis.__shd()}catch{}},100);' + $game
+$game = 'globalThis.__shd=()=>{let g=globalThis.__gm,w=g?.world,S=g?.shards,p=S?.planned,a=S?.at,P=w?.player,o=document.getElementById(`__shd`);if(!w||!P||!p||S.taken||w.farm||w.tristram||g.state!==`playing`){o&&(o.style.display=`none`);return}o||(o=document.createElement(`div`),o.id=`__shd`,o.style.cssText=`position:fixed;z-index:9999;pointer-events:none;font:bold 20px sans-serif;color:#fff6c8;text-shadow:0 0 4px #000,0 0 10px #fc6,0 0 18px #fc6;text-align:center;transform:translate(-50%,-50%);white-space:nowrap`,document.body.append(o));o.style.display=``;if(!a){let r=Math.max(0,Math.ceil(p.at-(w.time-w.actStart)));o.style.left=`50%`,o.style.top=`16%`,o.textContent=`' + (T '빛의 파편' 'Light shard') + ' ${p.shard}/10: ${r}' + (T '초 뒤 근처에 나타남' 's until it appears nearby') + '`;return}globalThis.__shdB!==p&&(globalThis.__shdB=p,globalThis.__beep?.(0));let x=a.x-P.x,y=a.y-P.y,v=w.view,W=v?.halfW||960,H=v?.halfH||540;if(!globalThis.__afk&&Math.abs(x)<W*.8&&Math.abs(y)<H*.8){o.style.display=`none`;return}let A=Math.atan2(y,x),R=Math.min(innerWidth,innerHeight)*.3;o.style.left=`${innerWidth/2+Math.cos(A)*R*1.3}px`,o.style.top=`${innerHeight/2+Math.sin(A)*R}px`,o.style.opacity=.55+.45*Math.abs(Math.sin(performance.now()/300)),o.innerHTML=`<div style="font-size:72px;line-height:1;color:#ffd75a;display:inline-block;transform:rotate(${A}rad)">➜</div><div>' + (T '빛의 파편' 'Light shard') + ' ${p.shard}/10 · ${Math.hypot(x/(2*W),y/(2*H)).toFixed(1)} ' + (T '화면' 'screens') + '${p.guarded?` · ' + (T '몬스터가 지킴' 'guarded') + '`:``}</div>`};setInterval(()=>{try{globalThis.__shd()}catch{}},100);setInterval(()=>{let y=globalThis.__gm?.clearing?.tyrael;if(!y||y.spoke||globalThis.__tyB===y)return;globalThis.__tyB=y,globalThis.__beep?.(0),globalThis.__afk&&!globalThis.__halt&&(globalThis.__halt=`' + (T '티리엘 등장: AFK를 끄고 티리엘에게 가세요' 'Tyrael is here: exit AFK and walk to him') + '`,globalThis.__gm.state===`playing`&&globalThis.__gm.pause())},500);' + $game
 }
 if ($O.fps) {
 $snap = @($game, $keepText, $uiText, $mainText, $langText, $header); try {
