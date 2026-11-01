@@ -79,6 +79,7 @@ Every runeword read from the game data: runes · level · item types, **fixed st
 |---|---|
 | F6 | Guide |
 | F4 | Runeword list |
+| F3 | Drop chance calculator |
 | F10 | Patch log |
 | F7 | Game speed |
 | F8 | AFK mode |
