@@ -1,5 +1,7 @@
 # D2 Survivors 편의 패치 (D2S-MyPatch)
 
+**한국어** | [English](README.en.md)
+
 D2 Survivors를 편하게 파밍할 수 있게 해 주는 비공식 패치입니다.
 **bat 파일 하나**로 기능 선택, 패치, 원본 복구, 자동 업데이트를 모두 처리합니다.
 
