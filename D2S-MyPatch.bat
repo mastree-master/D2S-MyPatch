@@ -31,7 +31,7 @@ if (-not (Test-Path $asar)) {
 $backup = "$asar.orig"
 
 # 업데이트 확인: GitHub의 version.txt가 더 크면 새 bat를 받아 자기 자신을 바꾸고 다시 실행
-$Ver = '1.18'
+$Ver = '1.19'
 $Repo = 'mastree-master/D2S-MyPatch'
 # raw.githubusercontent는 몇 분씩 예전 파일을 내주므로 캐시 없는 GitHub API로 받는다
 $raw = "https://api.github.com/repos/$Repo/contents"
@@ -120,6 +120,9 @@ $pv = if ($game -match 'globalThis\.__d2sv=([\d.]+);') { $Matches[1] } else { ''
 
 # 패치 기록 (선택 창 오른쪽에 표시). 새 버전은 맨 위에 추가
 $changelog = @'
+1.19
+- 적용 기능 한 줄을 화면 맨 위로, 색 구분 (적용 초록 / 안 함 빨강)
+
 1.18
 - 업데이트 알림이 떠 있을 때 더 새 버전이 나오면 알림도 최신 버전으로 바뀜
 
@@ -268,7 +271,7 @@ if (-not $Action) {
 }
 if (-not $hasFont) { $O.font = $false }
 $on = $feat.Keys | Where-Object { $O[$_] } | ForEach-Object { $feat[$_] }
-$short = [ordered]@{ carry = T '자동등록' 'stash'; pickup = T '즉시습득' 'pickup'; goldchest = T '골드·상자' 'gold'; overflow = T '꽉차면창고' 'overflow'; skillcharm = T '스킬부적창고' 'skillcharm'; log = T '획득목록' 'log'; swpop = T '교체창' 'swap'; twins = T '비교상자' 'compare'; hidden = T '숨은값' 'hidden'; auto = T '자동진행' 'auto'; nopause = T '창안멈춤' 'nopause'; stash = T 'B창고' 'Bstash'; afk = 'AFK'; speed = T '배속' 'speed'; bright = T '밝기명암' 'bright'; corpse = T '시체숨김' 'corpse'; fps = 'FPS'; font = T '폰트' 'font' }
+$short = [ordered]@{ carry = T '자동등록' 'stash'; pickup = T '즉시습득' 'pickup'; goldchest = T '골드상자' 'gold'; overflow = T '꽉차면창고' 'overflow'; skillcharm = T '스킬부적창고' 'skillcharm'; log = T '획득목록' 'log'; swpop = T '교체창' 'swap'; twins = T '비교상자' 'compare'; hidden = T '숨은값' 'hidden'; auto = T '자동진행' 'auto'; nopause = T '창안멈춤' 'nopause'; stash = T 'B창고' 'Bstash'; afk = 'AFK'; speed = T '배속' 'speed'; bright = T '밝기명암' 'bright'; corpse = T '시체숨김' 'corpse'; fps = 'FPS'; font = T '폰트' 'font' }
 $applied = (($short.Keys | ForEach-Object { $(if ($O[$_]) { [char]0x2713 } else { [char]0x2717 }) + $short[$_] }) -join ' · ') + ' | ' + $(if ($O.auto) { $(if ($O.automode -eq 'next') { T '다음 단계' 'next tier' } else { T '같은 단계' 'same tier' }) + " $($O.delay)" + (T '초' 's') + ' · ' } else { '' }) + (T '해상도 ' 'res ') + $(if ([int]$O.res -gt 0) { "$($O.res)%" } else { T '자동' 'auto' }) + ' · ' + (T 'FPS 제한 ' 'FPS cap ') + $(if ([int]$O.fpscap -gt 0) { $O.fpscap } else { T '없음' 'none' })
 
 if ($Action -eq 'restore') {
@@ -393,17 +396,17 @@ $game = Swap $game 'o=jr(r,a,!!n.portal?.through(t,e,a!==null&&a>=1.5))' ('o=jr(
 # AFK 모드 (F8): 화면을 검게 덮고 진행 상황·획득 목록·종료 버튼만 표시. 창을 내리거나 가려도 멈추지 않음
 if ($O.speed) {
 # 배속 (F7): 1 → 1.5 → 2 → 3배 순환. 프레임당 게임 업데이트 횟수를 늘림 (1.5배는 남는 0.5를 다음 프레임으로 넘김)
-$game = 'globalThis.__spd=1;globalThis.__spdA=0;globalThis.__spdS=(x,d,on)=>{let a=globalThis.__spdA+x*globalThis.__spd,k=Math.floor(a);return globalThis.__spdA=a-k,on&&globalThis.__afk&&(globalThis.__afkG=(globalThis.__afkG||0)+k*d),k};document.addEventListener(`keydown`,e=>{if(e.code!==`F7`)return;e.preventDefault(),e.stopPropagation();let l=[1,1.5,2,3];globalThis.__spd=l[(l.indexOf(globalThis.__spd)+1)%l.length],globalThis.__spdA=0;let o=document.getElementById(`__spd`);o||(o=document.createElement(`div`),o.id=`__spd`,o.style.cssText=`position:fixed;left:50%;top:6px;transform:translateX(-50%);z-index:9999;background:#000a;color:#fc6;border:1px solid #fc6;padding:2px 10px;font:bold 15px sans-serif;pointer-events:none`,document.body.append(o)),o.textContent=`' + (T '배속' 'Speed') + ' x${globalThis.__spd} (F7)`,o.style.display=globalThis.__spd===1?`none`:``},!0);' + $game
+$game = 'globalThis.__spd=1;globalThis.__spdA=0;globalThis.__spdS=(x,d,on)=>{let a=globalThis.__spdA+x*globalThis.__spd,k=Math.floor(a);return globalThis.__spdA=a-k,on&&globalThis.__afk&&(globalThis.__afkG=(globalThis.__afkG||0)+k*d),k};document.addEventListener(`keydown`,e=>{if(e.code!==`F7`)return;e.preventDefault(),e.stopPropagation();let l=[1,1.5,2,3];globalThis.__spd=l[(l.indexOf(globalThis.__spd)+1)%l.length],globalThis.__spdA=0;let o=document.getElementById(`__spd`);o||(o=document.createElement(`div`),o.id=`__spd`,o.style.cssText=`position:fixed;left:50%;top:24px;transform:translateX(-50%);z-index:9999;background:#000a;color:#fc6;border:1px solid #fc6;padding:2px 10px;font:bold 15px sans-serif;pointer-events:none`,document.body.append(o)),o.textContent=`' + (T '배속' 'Speed') + ' x${globalThis.__spd} (F7)`,o.style.display=globalThis.__spd===1?`none`:``},!0);' + $game
 $game = Swap $game 'for(let e=0;e<I.speed*t&&i&&' 'for(let e=0,S=globalThis.__spdS(I.speed*t,n,i&&this.state===`playing`&&!r);e<S&&i&&' 'speed'
 }
 
 # 밝기·명암: 게임 화면 canvas에 필터. PageUp/PageDown 밝기, Home/End 명암. 기본값은 선택 창 값
 if ($O.bright) {
-$game = 'globalThis.__br=' + ([decimal]$O.brightness / 100).ToString($inv) + ';globalThis.__ct=' + ([decimal]$O.contrast / 100).ToString($inv) + ';globalThis.__brA=()=>{let f=(globalThis.__br===1?``:`brightness(${globalThis.__br}) `)+(globalThis.__ct===1?``:`contrast(${globalThis.__ct})`);document.querySelectorAll(`canvas`).forEach(c=>{c.classList.contains(`d2-text`)||(c.style.filter=f)})};setInterval(globalThis.__brA,2e3);document.addEventListener(`keydown`,e=>{let k={PageUp:[`__br`,.1],PageDown:[`__br`,-.1],Home:[`__ct`,.1],End:[`__ct`,-.1]}[e.code];if(!k)return;e.preventDefault(),e.stopPropagation(),globalThis[k[0]]=Math.min(2,Math.max(.5,Math.round((globalThis[k[0]]+k[1])*10)/10)),globalThis.__brA();let o=document.getElementById(`__brt`);o||(o=document.createElement(`div`),o.id=`__brt`,o.style.cssText=`position:fixed;left:50%;top:40px;transform:translateX(-50%);z-index:9999;background:#000a;color:#fc6;border:1px solid #fc6;padding:2px 10px;font:bold 15px sans-serif;pointer-events:none`,document.body.append(o)),o.textContent=`' + (T '밝기' 'Brightness') + ' ${Math.round(globalThis.__br*100)}% · ' + (T '명암' 'Contrast') + ' ${Math.round(globalThis.__ct*100)}%`,o.style.display=``,clearTimeout(o.__t),o.__t=setTimeout(()=>o.style.display=`none`,1500)},!0);' + $game
+$game = 'globalThis.__br=' + ([decimal]$O.brightness / 100).ToString($inv) + ';globalThis.__ct=' + ([decimal]$O.contrast / 100).ToString($inv) + ';globalThis.__brA=()=>{let f=(globalThis.__br===1?``:`brightness(${globalThis.__br}) `)+(globalThis.__ct===1?``:`contrast(${globalThis.__ct})`);document.querySelectorAll(`canvas`).forEach(c=>{c.classList.contains(`d2-text`)||(c.style.filter=f)})};setInterval(globalThis.__brA,2e3);document.addEventListener(`keydown`,e=>{let k={PageUp:[`__br`,.1],PageDown:[`__br`,-.1],Home:[`__ct`,.1],End:[`__ct`,-.1]}[e.code];if(!k)return;e.preventDefault(),e.stopPropagation(),globalThis[k[0]]=Math.min(2,Math.max(.5,Math.round((globalThis[k[0]]+k[1])*10)/10)),globalThis.__brA();let o=document.getElementById(`__brt`);o||(o=document.createElement(`div`),o.id=`__brt`,o.style.cssText=`position:fixed;left:50%;top:52px;transform:translateX(-50%);z-index:9999;background:#000a;color:#fc6;border:1px solid #fc6;padding:2px 10px;font:bold 15px sans-serif;pointer-events:none`,document.body.append(o)),o.textContent=`' + (T '밝기' 'Brightness') + ' ${Math.round(globalThis.__br*100)}% · ' + (T '명암' 'Contrast') + ' ${Math.round(globalThis.__ct*100)}%`,o.style.display=``,clearTimeout(o.__t),o.__t=setTimeout(()=>o.style.display=`none`,1500)},!0);' + $game
 }
 # FPS 표시 (F9로 켜고 끔): 오른쪽 위
 if ($O.fps) {
-$game = 'globalThis.__fpsN=0;(function f(){globalThis.__fpsN++,requestAnimationFrame(f)})();setInterval(()=>{let o=document.getElementById(`__fps`);o&&(o.textContent=`FPS ${globalThis.__fpsN*2} · v' + $Ver + '`),globalThis.__fpsN=0},500);globalThis.__fpsT=()=>{let o=document.getElementById(`__fps`);if(o)return o.remove();o=document.createElement(`div`),o.id=`__fps`,o.style.cssText=`position:fixed;right:6px;top:6px;z-index:9999;background:#000a;color:#8e8;padding:1px 6px;font:bold 13px monospace;pointer-events:none`,o.textContent=`FPS · v' + $Ver + '`,document.body.append(o)};setTimeout(globalThis.__fpsT,3e3);document.addEventListener(`keydown`,e=>{e.code===`F9`&&(e.preventDefault(),e.stopPropagation(),globalThis.__fpsT())},!0);' + $game
+$game = 'globalThis.__fpsN=0;(function f(){globalThis.__fpsN++,requestAnimationFrame(f)})();setInterval(()=>{let o=document.getElementById(`__fps`);o&&(o.textContent=`FPS ${globalThis.__fpsN*2} · v' + $Ver + '`),globalThis.__fpsN=0},500);globalThis.__fpsT=()=>{let o=document.getElementById(`__fps`);if(o)return o.remove();o=document.createElement(`div`),o.id=`__fps`,o.style.cssText=`position:fixed;right:6px;top:24px;z-index:9999;background:#000a;color:#8e8;padding:1px 6px;font:bold 13px monospace;pointer-events:none`,o.textContent=`FPS · v' + $Ver + '`,document.body.append(o)};setTimeout(globalThis.__fpsT,3e3);document.addEventListener(`keydown`,e=>{e.code===`F9`&&(e.preventDefault(),e.stopPropagation(),globalThis.__fpsT())},!0);' + $game
 }
 # FPS 제한 (0 = 제한 없음): 낮추면 CPU/GPU 부담이 줄어듦. 게임 진행 속도는 그대로
 if ([int]$O.fpscap -gt 0) {
@@ -419,7 +422,7 @@ if ([int]$O.res -gt 0) {
 }
 
 # 게임 안 패치 기록 (F10으로 열고 닫기)
-$game = 'globalThis.__plog=' + ($changelog | ConvertTo-Json) + ';document.addEventListener(`keydown`,e=>{if(e.code!==`F10`)return;e.preventDefault(),e.stopPropagation();let o=document.getElementById(`__plog`);if(o)return o.remove();o=document.createElement(`div`),o.id=`__plog`,o.style.cssText=`position:fixed;right:20px;top:60px;bottom:60px;width:440px;overflow:auto;z-index:10003;background:#000e;color:#ddd;border:1px solid #fc6;padding:10px 14px;font:14px sans-serif;line-height:1.5;white-space:pre-line`,o.textContent=`' + (T '패치 기록' 'Patch log') + ' v' + $Ver + ' (F10 ' + (T '닫기' 'close') + ')\n`+globalThis.__papp+`\n\n`+globalThis.__plog,document.body.append(o)},!0);setTimeout(()=>{let h=document.createElement(`div`);h.id=`__pbar`,h.style.cssText=`position:fixed;left:6px;right:6px;bottom:2px;z-index:10000;color:#bbb;opacity:.8;font:11px sans-serif;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;pointer-events:none;text-shadow:0 0 2px #000,0 0 2px #000`,h.textContent=`D2S v' + $Ver + ' · F10 ' + (T '패치 기록' 'patch log') + ' · `+globalThis.__papp,document.body.append(h)},3e3);' + $game
+$game = 'globalThis.__plog=' + ($changelog | ConvertTo-Json) + ';document.addEventListener(`keydown`,e=>{if(e.code!==`F10`)return;e.preventDefault(),e.stopPropagation();let o=document.getElementById(`__plog`);if(o)return o.remove();o=document.createElement(`div`),o.id=`__plog`,o.style.cssText=`position:fixed;right:20px;top:60px;bottom:60px;width:440px;overflow:auto;z-index:10003;background:#000e;color:#ddd;border:1px solid #fc6;padding:10px 14px;font:14px sans-serif;line-height:1.5;white-space:pre-line`,o.textContent=`' + (T '패치 기록' 'Patch log') + ' v' + $Ver + ' (F10 ' + (T '닫기' 'close') + ')\n`+globalThis.__papp+`\n\n`+globalThis.__plog,document.body.append(o)},!0);setTimeout(()=>{let h=document.createElement(`div`);h.id=`__pbar`,h.style.cssText=`position:fixed;left:0;right:0;top:0;z-index:10000;background:#000b;color:#ccc;padding:2px 8px;font:12px sans-serif;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;pointer-events:none`,h.innerHTML=`<span style="color:#fc6;font-weight:bold">D2S v' + $Ver + '</span> · <span style="color:#8cf">F10 ' + (T '패치 기록' 'patch log') + '</span> · `+globalThis.__papp.replace(/</g,`&lt;`).replace(/\u2713([^ ·|]+)/g,`<span style="color:#7e7">\u2713$1</span>`).replace(/\u2717([^ ·|]+)/g,`<span style="color:#f77">\u2717$1</span>`),document.body.append(h)},3e3);' + $game
 $game = 'globalThis.__papp=' + ($applied | ConvertTo-Json) + ';' + $game
 
 # 패치 버전 표시: 다음 실행 때 예전 버전인지 판단용
