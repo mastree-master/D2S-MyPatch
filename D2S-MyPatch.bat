@@ -31,7 +31,7 @@ if (-not (Test-Path $asar)) {
 $backup = "$asar.orig"
 
 # 업데이트 확인: GitHub의 version.txt가 더 크면 새 bat를 받아 자기 자신을 바꾸고 다시 실행
-$Ver = '1.07'
+$Ver = '1.08'
 $Repo = 'mastree-master/D2S-MyPatch'
 # raw.githubusercontent는 몇 분씩 예전 파일을 내주므로 캐시 없는 GitHub API로 받는다
 $raw = "https://api.github.com/repos/$Repo/contents"
@@ -303,7 +303,7 @@ $game = 'globalThis.__br=' + ([decimal]$O.brightness / 100).ToString($inv) + ';g
 }
 # FPS 표시 (F9로 켜고 끔): 오른쪽 위
 if ($O.fps) {
-$game = 'globalThis.__fpsN=0;(function f(){globalThis.__fpsN++,requestAnimationFrame(f)})();setInterval(()=>{let o=document.getElementById(`__fps`);o&&(o.textContent=`FPS ${globalThis.__fpsN*2}`),globalThis.__fpsN=0},500);globalThis.__fpsT=()=>{let o=document.getElementById(`__fps`);if(o)return o.remove();o=document.createElement(`div`),o.id=`__fps`,o.style.cssText=`position:fixed;right:6px;top:6px;z-index:9999;background:#000a;color:#8e8;padding:1px 6px;font:bold 13px monospace;pointer-events:none`,o.textContent=`FPS`,document.body.append(o)};setTimeout(globalThis.__fpsT,3e3);document.addEventListener(`keydown`,e=>{e.code===`F9`&&(e.preventDefault(),e.stopPropagation(),globalThis.__fpsT())},!0);' + $game
+$game = 'globalThis.__fpsN=0;(function f(){globalThis.__fpsN++,requestAnimationFrame(f)})();setInterval(()=>{let o=document.getElementById(`__fps`);o&&(o.textContent=`FPS ${globalThis.__fpsN*2} · v' + $Ver + '`),globalThis.__fpsN=0},500);globalThis.__fpsT=()=>{let o=document.getElementById(`__fps`);if(o)return o.remove();o=document.createElement(`div`),o.id=`__fps`,o.style.cssText=`position:fixed;right:6px;top:6px;z-index:9999;background:#000a;color:#8e8;padding:1px 6px;font:bold 13px monospace;pointer-events:none`,o.textContent=`FPS · v' + $Ver + '`,document.body.append(o)};setTimeout(globalThis.__fpsT,3e3);document.addEventListener(`keydown`,e=>{e.code===`F9`&&(e.preventDefault(),e.stopPropagation(),globalThis.__fpsT())},!0);' + $game
 }
 # FPS 제한 (0 = 제한 없음): 낮추면 CPU/GPU 부담이 줄어듦. 게임 진행 속도는 그대로
 if ([int]$O.fpscap -gt 0) {
