@@ -56,7 +56,7 @@ if (-not (Test-Path $asar)) {
 $backup = "$asar.orig"
 
 # 업데이트 확인: GitHub의 version.txt가 더 크면 새 bat를 받아 자기 자신을 바꾸고 다시 실행
-$Ver = '1.54'
+$Ver = '1.55'
 $Repo = 'mastree-master/D2S-MyPatch'
 # raw.githubusercontent는 몇 분씩 예전 파일을 내주므로 캐시 없는 GitHub API로 받는다
 $raw = "https://api.github.com/repos/$Repo/contents"
@@ -146,6 +146,9 @@ $pv = if ($game -match 'globalThis\.__d2sv=([\d.]+);') { $Matches[1] } else { ''
 
 # 패치 기록 (선택 창 오른쪽에 표시). 새 버전은 맨 위에 추가
 $changelog = @'
+1.55
+- 패치 창 아래가 잘려 "체크한 것 적용" 버튼이 안 보이던 문제 수정 (버튼을 탭 밖 맨 아래로, 탭 안은 넘치면 스크롤)
+
 1.54
 - 패치 창에 "보관 설정 (F2)" 탭: 게임의 F2 와 같은 설정을 표로 편집 (분류 · 검색 · 미등록만 · 보이는 줄 전부 바꾸기, 보이는 줄 상태 요약). 바꾸면 바로 저장되고 게임이 켜져 있으면 몇 초 안에 반영
 - 게임 F2 와 패치 창이 같은 설정 파일(%APPDATA%D2S-MyPatchkeep.json)을 씀
@@ -455,17 +458,17 @@ if (-not $Action) {
     $bApply = New-Object Windows.Forms.Button; $bApply.Text = T '체크한 것 적용' 'Apply checked'; $bApply.AutoSize = $true; $bApply.DialogResult = 'Yes'
     $bRestore = New-Object Windows.Forms.Button; $bRestore.Text = T '원본으로 복구' 'Restore original'; $bRestore.AutoSize = $true; $bRestore.DialogResult = 'No'; $bRestore.Enabled = $patched
     $bClose = New-Object Windows.Forms.Button; $bClose.Text = T '닫기' 'Close'; $bClose.AutoSize = $true; $bClose.DialogResult = 'Cancel'
-    $bp.Controls.AddRange(@($bApply, $bRestore, $bClose)); $p.Controls.Add($bp)
+    $bp.Controls.AddRange(@($bApply, $bRestore, $bClose))
     $row = New-Object Windows.Forms.FlowLayoutPanel; $row.AutoSize = $true; $row.WrapContents = $false
     $lg = New-Object Windows.Forms.TextBox; $lg.Multiline = $true; $lg.ReadOnly = $true; $lg.ScrollBars = 'Vertical'; $lg.BackColor = 'White'
     $lg.Text = (T '패치 기록' 'Patch log') + "`r`n`r`n" + ($changelog -replace "`r?`n", "`r`n"); $lg.Margin = '16,0,0,0'
     $row.Controls.Add($p); $row.Controls.Add($lg)
     $lg.Size = New-Object Drawing.Size(360, $p.PreferredSize.Height)
-    $tc = New-Object Windows.Forms.TabControl; $t1 = New-Object Windows.Forms.TabPage; $t1.Text = T '기능' 'Features'; $t1.Controls.Add($row); $t1.Padding = 8
+    $tc = New-Object Windows.Forms.TabControl; $t1 = New-Object Windows.Forms.TabPage; $t1.Text = T '기능' 'Features'; $t1.Controls.Add($row); $t1.Padding = 8; $t1.AutoScroll = $true
     $t2 = New-Object Windows.Forms.TabPage; $t2.Text = T '보관 설정 (F2)' 'Keep settings (F2)'; $t2.Padding = 8
-    $tc.TabPages.AddRange(@($t1, $t2)); $tc.Size = New-Object Drawing.Size(($row.PreferredSize.Width + 30), ($row.PreferredSize.Height + 50))
+    $tc.TabPages.AddRange(@($t1, $t2)); $tc.Size = New-Object Drawing.Size(($row.PreferredSize.Width + 40), ($row.PreferredSize.Height + 60))
     . $KeepTab $t2
-    $f.Controls.Add($tc); $f.AcceptButton = $bApply; $f.CancelButton = $bClose
+    $fp = New-Object Windows.Forms.FlowLayoutPanel; $fp.FlowDirection = 'TopDown'; $fp.AutoSize = $true; $fp.WrapContents = $false; $fp.Controls.AddRange(@($tc, $bp)); $f.Controls.Add($fp); $f.AcceptButton = $bApply; $f.CancelButton = $bClose
     if ($env:D2S_SHOT) { $f.Add_Shown({ $b = New-Object Drawing.Bitmap($f.Width, $f.Height); $f.DrawToBitmap($b, (New-Object Drawing.Rectangle(0, 0, $f.Width, $f.Height))); $b.Save($env:D2S_SHOT); $f.Close() }) }
     $f.Add_Shown({ $f.Activate(); $f.BringToFront() })
     $res = $f.ShowDialog()
