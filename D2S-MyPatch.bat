@@ -56,7 +56,7 @@ if (-not (Test-Path $asar)) {
 $backup = "$asar.orig"
 
 # 업데이트 확인: GitHub의 version.txt가 더 크면 새 bat를 받아 자기 자신을 바꾸고 다시 실행
-$Ver = '1.34'
+$Ver = '1.35'
 $Repo = 'mastree-master/D2S-MyPatch'
 # raw.githubusercontent는 몇 분씩 예전 파일을 내주므로 캐시 없는 GitHub API로 받는다
 $raw = "https://api.github.com/repos/$Repo/contents"
@@ -133,6 +133,7 @@ $feat = [ordered]@{
     afk = T 'AFK 모드 (F8) · 최소화해도 안 멈춤' 'AFK mode (F8) · no minimize throttle'
     speed = T '배속 (F7: 1 → 1.5 → 2 → 3배, 화면 위에 표시)' 'Game speed (F7: 1 → 1.5 → 2 → 3x, shown on top)'
     bright = T '밝기 · 명암 (PageUp/PageDown, Home/End)' 'Brightness · contrast (PageUp/PageDown, Home/End)'
+    hud = T 'HUD 배치 (소환수 · 스킬 한 줄씩 왼쪽 위, 게임 정보 오른쪽 위)' 'HUD layout (pets · skills one row each top-left, run info top-right)'
     corpse = T '시체 숨김' 'Hide corpses'
     fps = T 'FPS 표시 (F9)' 'Show FPS (F9)'
     font = T '폰트 교체 (kodia.ttf 있을 때)' 'Font replace (needs kodia.ttf)'
@@ -145,6 +146,10 @@ $pv = if ($game -match 'globalThis\.__d2sv=([\d.]+);') { $Matches[1] } else { ''
 
 # 패치 기록 (선택 창 오른쪽에 표시). 새 버전은 맨 위에 추가
 $changelog = @'
+1.35
+- HUD 배치: 소환수 1줄 · 스킬 줄마다 1줄로 화면 맨 왼쪽 위, 게임 정보(단계·처치·골드·초당 피해)는 화면 맨 오른쪽 위 (선택 창에서 끄기 가능)
+- FPS 표시를 맨 위 줄 오른쪽 끝으로 (버전은 맨 위 줄 왼쪽)
+
 1.34
 - 획득 목록 줄을 짧게: (양손 석궁 · 등록본 양손 활) 처럼 손잡이·종류만 (자세한 건 마우스 올리면)
 
@@ -352,7 +357,7 @@ if (-not $Action) {
 }
 if (-not $hasFont) { $O.font = $false }
 $on = $feat.Keys | Where-Object { $O[$_] } | ForEach-Object { $feat[$_] }
-$short = [ordered]@{ carry = T '자동등록' 'stash'; pickup = T '즉시습득' 'pickup'; goldchest = T '골드상자' 'gold'; overflow = T '꽉차면창고' 'overflow'; skillcharm = T '스킬부적창고' 'skillcharm'; log = T '획득목록' 'log'; swpop = T '교체창' 'swap'; twins = T '비교상자' 'compare'; hidden = T '숨은값' 'hidden'; auto = T '자동진행' 'auto'; nopause = T '창안멈춤' 'nopause'; stash = T 'B창고' 'Bstash'; afk = 'AFK'; speed = T '배속' 'speed'; bright = T '밝기명암' 'bright'; corpse = T '시체숨김' 'corpse'; fps = 'FPS'; font = T '폰트' 'font' }
+$short = [ordered]@{ carry = T '자동등록' 'stash'; pickup = T '즉시습득' 'pickup'; goldchest = T '골드상자' 'gold'; overflow = T '꽉차면창고' 'overflow'; skillcharm = T '스킬부적창고' 'skillcharm'; log = T '획득목록' 'log'; swpop = T '교체창' 'swap'; twins = T '비교상자' 'compare'; hidden = T '숨은값' 'hidden'; auto = T '자동진행' 'auto'; nopause = T '창안멈춤' 'nopause'; stash = T 'B창고' 'Bstash'; afk = 'AFK'; speed = T '배속' 'speed'; bright = T '밝기명암' 'bright'; hud = T 'HUD배치' 'hud'; corpse = T '시체숨김' 'corpse'; fps = 'FPS'; font = T '폰트' 'font' }
 function MkApplied { (($short.Keys | ForEach-Object { $(if ($O[$_]) { [char]0x2713 } else { [char]0x2717 }) + $short[$_] }) -join ' · ') + ' | ' + $(if ($O.auto) { $(if ($O.automode -eq 'next') { T '다음 단계' 'next tier' } else { T '같은 단계' 'same tier' }) + " $($O.delay)" + (T '초' 's') + ' · ' } else { '' }) + (T '해상도 ' 'res ') + $(if ([int]$O.res -gt 0) { "$($O.res)%" } else { T '자동' 'auto' }) + ' · ' + (T 'FPS 제한 ' 'FPS cap ') + $(if ([int]$O.fpscap -gt 0) { $O.fpscap } else { T '없음' 'none' }) }
 $applied = MkApplied
 
@@ -493,6 +498,12 @@ $game = 'globalThis.__spd=1;globalThis.__spdA=0;globalThis.__spdS=(x,d,on)=>{let
 $game = Swap $game 'for(let e=0;e<I.speed*t&&i&&' 'for(let e=0,S=globalThis.__spdS(I.speed*t,n,i&&this.state===`playing`&&!r);e<S&&i&&' 'speed'
 } catch { if ("$_" -notlike 'D2SUNSUP*') { throw }; $game, $keepText, $uiText, $mainText, $langText, $header = $snap; $bad += 'speed' } }
 
+# HUD 배치: 소환수(용병 포함) 1줄 · 스킬 줄마다 1줄로 화면 맨 왼쪽 위, 게임 정보(단계·처치·골드·초당 피해)는 화면 맨 오른쪽 위
+# 게임 HUD는 800x600 틀을 화면 아래 가운데에 맞춰 확대하므로, 화면 끝 좌표 = 틀 기준 400 - 50vw/배율, 600 - 100vh/배율
+if ($O.hud) {
+$hudCss = '.d2ui #merc{left:calc(406px - 50vw / var(--ui-scale,1)) !important;top:calc(606px - (100vh - 24px) / var(--ui-scale,1)) !important}.d2ui #pets{grid-template-columns:none !important;grid-auto-flow:column !important;grid-auto-columns:46px;top:calc(606px - (100vh - 24px) / var(--ui-scale,1)) !important;left:calc(406px - 50vw / var(--ui-scale,1)) !important}.d2ui.has-merc #pets{left:calc(458px - 50vw / var(--ui-scale,1)) !important}.d2ui #build{left:calc(406px - 50vw / var(--ui-scale,1)) !important;top:calc(606px - (100vh - 24px) / var(--ui-scale,1) + var(--d2s-row,0px)) !important}.d2ui.has-pets #build,.d2ui.has-merc #build{--d2s-row:54px}.d2ui #build .strip .slot-row.wide{display:flex !important;flex-wrap:nowrap}.d2ui #run-info{right:calc(406px - 50vw / var(--ui-scale,1)) !important;top:calc(606px - (100vh - 24px) / var(--ui-scale,1)) !important}'
+$game = 'setTimeout(()=>{let s=document.createElement(`style`);s.id=`__hudcss`,s.textContent=`' + $hudCss + '`,document.head.append(s)},0);' + $game
+}
 # 밝기·명암: 게임 화면 canvas에 필터. PageUp/PageDown 밝기, Home/End 명암. 기본값은 선택 창 값
 if ($O.bright) {
 $snap = @($game, $keepText, $uiText, $mainText, $langText, $header); try {
@@ -501,7 +512,7 @@ $game = 'globalThis.__br=' + ([decimal]$O.brightness / 100).ToString($inv) + ';g
 # FPS 표시 (F9로 켜고 끔): 오른쪽 위
 if ($O.fps) {
 $snap = @($game, $keepText, $uiText, $mainText, $langText, $header); try {
-$game = 'globalThis.__fpsN=0;(function f(){globalThis.__fpsN++,requestAnimationFrame(f)})();setInterval(()=>{let o=document.getElementById(`__fps`);o&&(o.textContent=`FPS ${globalThis.__fpsN*2} · v' + $Ver + '`),globalThis.__fpsN=0},500);globalThis.__fpsT=()=>{let o=document.getElementById(`__fps`);if(o)return o.remove();o=document.createElement(`div`),o.id=`__fps`,o.style.cssText=`position:fixed;right:6px;top:24px;z-index:9999;background:#000a;color:#8e8;padding:1px 6px;font:bold 13px monospace;pointer-events:none`,o.textContent=`FPS · v' + $Ver + '`,document.body.append(o)};setTimeout(globalThis.__fpsT,3e3);document.addEventListener(`keydown`,e=>{e.code===`F9`&&(e.preventDefault(),e.stopPropagation(),globalThis.__fpsT())},!0);' + $game
+$game = 'globalThis.__fpsN=0;(function f(){globalThis.__fpsN++,requestAnimationFrame(f)})();setInterval(()=>{let o=document.getElementById(`__fps`);o&&(o.textContent=`FPS ${globalThis.__fpsN*2}`),globalThis.__fpsN=0},500);globalThis.__fpsT=()=>{let o=document.getElementById(`__fps`);if(o)return o.remove();o=document.createElement(`div`),o.id=`__fps`,o.style.cssText=`position:fixed;right:8px;top:2px;z-index:10001;background:#000;color:#8e8;padding:0 6px;font:bold 12px monospace;pointer-events:none`,o.textContent=`FPS`,document.body.append(o)};setTimeout(globalThis.__fpsT,3e3);document.addEventListener(`keydown`,e=>{e.code===`F9`&&(e.preventDefault(),e.stopPropagation(),globalThis.__fpsT())},!0);' + $game
 } catch { if ("$_" -notlike 'D2SUNSUP*') { throw }; $game, $keepText, $uiText, $mainText, $langText, $header = $snap; $bad += 'fps' } }
 # FPS 제한 (0 = 제한 없음): 낮추면 CPU/GPU 부담이 줄어듦. 게임 진행 속도는 그대로
 if ([int]$O.fpscap -gt 0) {
@@ -566,7 +577,7 @@ $game = 'globalThis.__gupd=v=>{if(document.getElementById(`__gupd`))return;let d
 } catch { if ("$_" -notlike 'D2SUNSUP*') { throw }; $game, $keepText, $uiText, $mainText, $langText, $header = $snap }
 
 # 게임 안 패치 기록 (F10으로 열고 닫기)
-$game = 'globalThis.__plog=' + ($changelog | ConvertTo-Json) + ';document.addEventListener(`keydown`,e=>{if(e.code!==`F10`)return;e.preventDefault(),e.stopPropagation();let o=document.getElementById(`__plog`);if(o)return o.remove();o=document.createElement(`div`),o.id=`__plog`,o.style.cssText=`position:fixed;right:20px;top:60px;bottom:60px;width:440px;overflow:auto;z-index:10003;background:#000e;color:#ddd;border:1px solid #fc6;padding:10px 14px;font:14px sans-serif;line-height:1.5;white-space:pre-line`,o.textContent=`' + (T '패치 기록' 'Patch log') + ' v' + $Ver + ' (F10 ' + (T '닫기' 'close') + ')\n`+globalThis.__papp+`\n\n`+globalThis.__plog,document.body.append(o)},!0);setTimeout(()=>{let h=document.createElement(`div`);h.id=`__pbar`,h.style.cssText=`position:fixed;left:0;right:0;top:0;z-index:10000;background:#000b;color:#ccc;padding:2px 8px;font:12px sans-serif;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;pointer-events:none`,h.innerHTML=`<span style="color:#fc6;font-weight:bold">D2S v' + $Ver + '</span> <span style="color:#999">(' + (T '게임 빌드 ' 'build ') + $build + ')</span> · <span style="color:#8cf">F6 ' + (T '설명서' 'guide') + ' · F4 ' + (T '룬워드' 'runewords') + ' · F10 ' + (T '패치 기록' 'patch log') + '</span> · `+globalThis.__papp.replace(/</g,`&lt;`).replace(/\u2713([^ ·|]+)/g,`<span style="color:#7e7">\u2713$1</span>`).replace(/\u2717([^ ·|]+)/g,`<span style="color:#f77">\u2717$1</span>`),document.body.append(h)},3e3);' + $game
+$game = 'globalThis.__plog=' + ($changelog | ConvertTo-Json) + ';document.addEventListener(`keydown`,e=>{if(e.code!==`F10`)return;e.preventDefault(),e.stopPropagation();let o=document.getElementById(`__plog`);if(o)return o.remove();o=document.createElement(`div`),o.id=`__plog`,o.style.cssText=`position:fixed;right:20px;top:60px;bottom:60px;width:440px;overflow:auto;z-index:10003;background:#000e;color:#ddd;border:1px solid #fc6;padding:10px 14px;font:14px sans-serif;line-height:1.5;white-space:pre-line`,o.textContent=`' + (T '패치 기록' 'Patch log') + ' v' + $Ver + ' (F10 ' + (T '닫기' 'close') + ')\n`+globalThis.__papp+`\n\n`+globalThis.__plog,document.body.append(o)},!0);setTimeout(()=>{let h=document.createElement(`div`);h.id=`__pbar`,h.style.cssText=`position:fixed;left:0;right:0;top:0;z-index:10000;background:#000b;color:#ccc;padding:2px 70px 2px 8px;font:12px sans-serif;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;pointer-events:none`,h.innerHTML=`<span style="color:#fc6;font-weight:bold">D2S v' + $Ver + '</span> <span style="color:#999">(' + (T '게임 빌드 ' 'build ') + $build + ')</span> · <span style="color:#8cf">F6 ' + (T '설명서' 'guide') + ' · F4 ' + (T '룬워드' 'runewords') + ' · F10 ' + (T '패치 기록' 'patch log') + '</span> · `+globalThis.__papp.replace(/</g,`&lt;`).replace(/\u2713([^ ·|]+)/g,`<span style="color:#7e7">\u2713$1</span>`).replace(/\u2717([^ ·|]+)/g,`<span style="color:#f77">\u2717$1</span>`),document.body.append(h)},3e3);' + $game
 $game = 'globalThis.__papp=' + ($applied | ConvertTo-Json) + ';' + $game
 
 # 패치 버전 표시: 다음 실행 때 예전 버전인지 판단용
