@@ -2,6 +2,8 @@
 
 [한국어](README.md) | **English**
 
+**Current patch: v1.48 · for game build 2026.1101.1** (previous build 2026.1030.2 also works)
+
 An unofficial quality-of-life patch that makes farming in D2 Survivors much easier.
 A **single bat file** handles feature selection, patching, restoring the original, and auto-updates.
 The patch UI follows your Windows language (Korean / English).
@@ -80,6 +82,7 @@ Every runeword read from the game data: runes · level · item types, **fixed st
 | F6 | Guide |
 | F4 | Runeword list |
 | F3 | Drop chance calculator |
+| F2 | Keep settings (sell / bag / stash per item, registered count) |
 | F10 | Patch log |
 | F7 | Game speed |
 | F8 | AFK mode |
