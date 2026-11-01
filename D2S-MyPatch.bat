@@ -150,6 +150,7 @@ $changelog = @'
 - 패치 창을 디아블로풍으로: 게임 메뉴 그림 배너 · 금색 제목, 어두운 배경, 게임 돌 버튼, 탭 · 표 · 입력칸 어두운 색 (게임 그림이 없으면 색만)
 - 기능 탭 스크롤 없이 한 화면: 기능 · 조절값을 같은 폭의 상자(금색 테두리 · 제목 띠)에 2열로, 조절값 입력칸 줄 맞춤
 - 보관 설정 탭: 맨 앞 선택 칸, 전체 선택 / 전체 해제(보이는 줄), "체크한 줄을 [인벤 · 판매 · 창고] (으)로 적용", 구분 · 검색 · 설정 필터(인벤만 · 판매만 · 창고만)
+- 패치 창 배너에 움직이는 Diablo II 불꽃 로고 (게임 타이틀 그림), 인게임 단축키 상자, GitHub 버튼
 - 패치 창 언어 판별을 여러 값으로 (가끔 영어로 뜨던 문제)
 
 1.57
@@ -491,6 +492,14 @@ if (-not $Action) {
     [void]$cMode.Items.AddRange(@((T '같은 단계 계속 반복' 'Repeat same tier'), (T '한 단계씩 올라가기' 'Go up one tier')))
     $cMode.SelectedIndex = [int]($O.automode -eq 'next')
     $mr.Controls.Add($ml); $mr.Controls.Add($cMode); $np.Controls.Add($mr)
+    $hk = Box (T '인게임 단축키' 'In-game hotkeys') 172
+    foreach ($x in @(@('F2', (T '보관 설정' 'Keep settings')), @('F3', (T '드롭 확률' 'Drop odds')), @('F4', (T '룬워드 목록' 'Runewords')), @('F6', (T '설명서' 'Guide')), @('F7', (T '배속' 'Speed')), @('F8', (T 'AFK 모드' 'AFK mode')), @('F9', (T 'FPS 표시' 'FPS')), @('F10', (T '패치 기록' 'Patch log')), @('B', (T '창고 열기 · 닫기' 'Stash')), @('Ctrl+Click', (T '창고로 보내기' 'To stash')), @('Shift', (T '같은 아이템 위치 전부' 'All copies')), @('PgUp/PgDn', (T '밝기' 'Brightness')), @('Home/End', (T '명암' 'Contrast')))) {
+        $hr = New-Object Windows.Forms.FlowLayoutPanel; $hr.AutoSize = $true; $hr.WrapContents = $false; $hr.Margin = '3,2,18,2'
+        $kl = New-Object Windows.Forms.Label; $kl.Text = $x[0]; $kl.AutoSize = $false; $kl.Size = New-Object Drawing.Size(92, 24); $kl.TextAlign = 'MiddleCenter'; $kl.Font = New-Object Drawing.Font('Consolas', 10, [Drawing.FontStyle]::Bold); $kl.Tag = 'key'
+        $kl.Add_Paint({ param($s, $e) $e.Graphics.DrawRectangle((New-Object Drawing.Pen([Drawing.Color]::FromArgb(150, 118, 64))), 0, 0, $s.Width - 1, $s.Height - 1) })
+        $dl = New-Object Windows.Forms.Label; $dl.Text = $x[1]; $dl.AutoSize = $true; $dl.Padding = '0,4,0,0'
+        $hr.Controls.Add($kl); $hr.Controls.Add($dl); $hk.Controls.Add($hr)
+    }
     $nDelay = Num (T '자동 진행 대기 (초)' 'Auto delay (s)') $O.delay 1 30 1
     $nBright = Num (T '기본 밝기 (%)' 'Default brightness (%)') $O.brightness 50 200 5
     $nLog = Num (T '획득 목록 처음 높이 (줄)' 'Pickup log height (lines)') $O.logn 5 40 1
@@ -503,13 +512,14 @@ if (-not $Action) {
     $bApply = New-Object Windows.Forms.Button; $bApply.Text = T '체크한 것 적용' 'Apply checked'; $bApply.AutoSize = $true; $bApply.DialogResult = 'Yes'
     $bRestore = New-Object Windows.Forms.Button; $bRestore.Text = T '원본으로 복구' 'Restore original'; $bRestore.AutoSize = $true; $bRestore.DialogResult = 'No'; $bRestore.Enabled = $patched
     $bClose = New-Object Windows.Forms.Button; $bClose.Text = T '닫기' 'Close'; $bClose.AutoSize = $true; $bClose.DialogResult = 'Cancel'
-    $bp.Controls.AddRange(@($bApply, $bRestore, $bClose))
+    $bGit = New-Object Windows.Forms.Button; $bGit.Text = 'GitHub'; $bGit.AutoSize = $true; $bGit.Add_Click({ Start-Process "https://github.com/$Repo" })
+    $bp.Controls.AddRange(@($bApply, $bRestore, $bClose, $bGit))
     $row = New-Object Windows.Forms.FlowLayoutPanel; $row.AutoSize = $true; $row.WrapContents = $false
     $lg = New-Object Windows.Forms.TextBox; $lg.Multiline = $true; $lg.ReadOnly = $true; $lg.ScrollBars = 'Vertical'; $lg.BackColor = 'White'
     $lg.Text = (T '패치 기록' 'Patch log') + "`r`n`r`n" + ($changelog -replace "`r?`n", "`r`n"); $lg.Margin = '16,0,0,0'
     $row.Controls.Add($p); $row.Controls.Add($lg)
-    foreach ($x in @($cbp, $np)) { $x.PerformLayout(); $x.Size = $x.PreferredSize; $x.Parent.PerformLayout() }
-    $bw = [Math]::Max($cbp.Parent.Width, $np.Parent.Width); foreach ($x in @($cbp, $np)) { $x.Parent.AutoSize = $false; $x.Parent.Size = New-Object Drawing.Size($bw, ($x.PreferredSize.Height + 46)) }; $p.PerformLayout()
+    foreach ($x in @($cbp, $np, $hk)) { $x.PerformLayout(); $x.Size = $x.PreferredSize; $x.Parent.PerformLayout() }
+    $bw = [Math]::Max([Math]::Max($cbp.Parent.Width, $np.Parent.Width), $hk.Parent.Width); foreach ($x in @($cbp, $np, $hk)) { $x.Parent.AutoSize = $false; $x.Parent.Size = New-Object Drawing.Size($bw, ($x.PreferredSize.Height + 46)) }; $p.PerformLayout()
     $lg.Size = New-Object Drawing.Size(360, $p.PreferredSize.Height)
     $tc = New-Object Windows.Forms.Panel; $tc.Size = New-Object Drawing.Size(($row.PreferredSize.Width + 70), ($row.PreferredSize.Height + 70))
     $t1 = New-Object Windows.Forms.Panel; $t1.Controls.Add($row); $t1.Padding = 8; $t2 = New-Object Windows.Forms.Panel; $t2.Padding = 8; $t2.Visible = $false
@@ -541,6 +551,7 @@ if (-not $Action) {
             if ($c -is [Windows.Forms.ComboBox]) { $c.FlatStyle = 'Flat' } else { $c.BorderStyle = 'FixedSingle' }
         } elseif ($c -is [Windows.Forms.GroupBox]) { $c.ForeColor = $cGold; $c.BackColor = $cBg }
         elseif ($c -is [Windows.Forms.TabPage] -or $c -is [Windows.Forms.Panel] -or $c -is [Windows.Forms.Form]) { $c.BackColor = $cBg; $c.ForeColor = $cTxt }
+        elseif ($c -is [Windows.Forms.Label] -and $c.Tag -eq 'key') { $c.ForeColor = $cGold; $c.BackColor = [Drawing.Color]::FromArgb(40, 30, 18) }
         elseif ($c -is [Windows.Forms.CheckBox] -or $c -is [Windows.Forms.Label]) { if ($c.ForeColor -eq [Drawing.Color]::DarkBlue) { $c.ForeColor = $cGold } else { $c.ForeColor = $cTxt } }
         foreach ($x in $c.Controls) { & $skin $x }
     }
@@ -548,7 +559,7 @@ if (-not $Action) {
     # 탭: 어두운 바탕에 금색 글씨로 직접 그림
     foreach ($x in @($tb1, $tb2)) { $x.FlatAppearance.BorderSize = 1; $x.Add_Paint({ param($s, $e) if ($s.Tag) { $e.Graphics.DrawRectangle((New-Object Drawing.Pen($cGold, 2)), 1, 1, $s.Width - 3, $s.Height - 3) } }) }; & $tabSel 0
     # 맨 위 배너: 게임 메뉴 그림(가로로 잘라 채움) + 어둡게 + 금색 제목
-    $ban = New-Object Windows.Forms.Panel; $ban.Size = New-Object Drawing.Size($tc.Width, 96); $ban.Margin = '0,0,0,6'
+    $ban = New-Object Windows.Forms.PictureBox; $ban.Size = New-Object Drawing.Size($tc.Width, 110); $lg0 = @(); foreach ($n in @(@('logo-d2logoblackleft.png', 25, 159, 122, 169, 75, 0), @('logo-d2logoblackright.png', 25, 159, 122, -9, 75, 0), @('logo-d2logofireleft.png', 23, 178, 165, 180, 111, 1), @('logo-d2logofireright.png', 22, 184, 171, 4, 110, 1))) { try { $lg0 += , @([Drawing.Image]::FromFile((Join-Path $fe $n[0])), $n[1], $n[2], $n[3], $n[4], $n[5], $n[6]) } catch {} }; $script:lgf = 0; $ia = New-Object Drawing.Imaging.ImageAttributes; $ia.SetColorKey([Drawing.Color]::FromArgb(0, 0, 0), [Drawing.Color]::FromArgb(48, 40, 40)); $tmr = New-Object Windows.Forms.Timer; $tmr.Interval = 40; $tmr.Add_Tick({ $script:lgf = ($script:lgf + 1) % 30; $ban.Invalidate() }); if ($lg0.Count -eq 4) { $tmr.Start() }; $ban.Margin = '0,0,0,6'
     $ban.Add_Paint({ param($s, $e)
         $g = $e.Graphics; $r = $s.ClientRectangle
         if ($imgBan) { $h = [int]($imgBan.Width * $r.Height / $r.Width); $g.DrawImage($imgBan, $r, (New-Object Drawing.Rectangle(0, [int](($imgBan.Height - $h) * 0.66), $imgBan.Width, $h)), [Drawing.GraphicsUnit]::Pixel) } else { $g.Clear($cBg2) }
@@ -557,6 +568,7 @@ if (-not $Action) {
         $ft = New-Object Drawing.Font('Times New Roman', 26, [Drawing.FontStyle]::Bold); $fs = New-Object Drawing.Font('Malgun Gothic', 10)
         $g.DrawString('D2S-MyPatch', $ft, (New-Object Drawing.SolidBrush([Drawing.Color]::Black)), 22, 16); $g.DrawString('D2S-MyPatch', $ft, (New-Object Drawing.SolidBrush($cGold)), 20, 14)
         $g.DrawString(("v$Ver  ·  " + (T '게임 빌드 ' 'game build ') + $build + '   ·   ' + $st.Text), $fs, (New-Object Drawing.SolidBrush($cTxt)), 24, 60)
+        if ($lg0.Count -eq 4) { $k = 0.62; $cx = $r.Width - 170; $cy = 62; foreach ($L in $lg0) { $fr = $script:lgf; $sx = ($fr % $L[1]) * $L[2]; $sy = [Math]::Floor($fr / $L[1]) * $L[3]; $d = New-Object Drawing.Rectangle([int]($cx - $L[4] * $k), [int]($cy - $L[5] * $k), [int]($L[2] * $k), [int]($L[3] * $k)); if ($L[6]) { $g.DrawImage($L[0], $d, $sx, $sy, $L[2], $L[3], [Drawing.GraphicsUnit]::Pixel, $ia) } else { $g.DrawImage($L[0], $d, $sx, $sy, $L[2], $L[3], [Drawing.GraphicsUnit]::Pixel) } } }
         $g.DrawRectangle((New-Object Drawing.Pen($cEdge)), 0, 0, $r.Width - 1, $r.Height - 1)
     })
     $fp.Controls.Add($ban); $fp.Controls.SetChildIndex($ban, 0); $st.Visible = $false
