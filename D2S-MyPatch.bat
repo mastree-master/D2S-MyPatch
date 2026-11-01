@@ -56,7 +56,7 @@ if (-not (Test-Path $asar)) {
 $backup = "$asar.orig"
 
 # 업데이트 확인: GitHub의 version.txt가 더 크면 새 bat를 받아 자기 자신을 바꾸고 다시 실행
-$Ver = '1.31'
+$Ver = '1.32'
 $Repo = 'mastree-master/D2S-MyPatch'
 # raw.githubusercontent는 몇 분씩 예전 파일을 내주므로 캐시 없는 GitHub API로 받는다
 $raw = "https://api.github.com/repos/$Repo/contents"
@@ -145,6 +145,10 @@ $pv = if ($game -match 'globalThis\.__d2sv=([\d.]+);') { $Matches[1] } else { ''
 
 # 패치 기록 (선택 창 오른쪽에 표시). 새 버전은 맨 위에 추가
 $changelog = @'
+1.32
+- 게임 업데이트 후 안 맞는 기능만 빼고 나머지는 적용, 안 되는 기능 목록을 알려 줌 (맨 위 줄에 "불가" 표시)
+- 게임 새 빌드가 준비되면 "설치하면 패치가 풀림 · 설치 후 bat 실행" 알림
+
 1.31
 - 룬워드 목록 · 설명서 창 제목과 검색칸을 스크롤해도 위에 고정
 - 룬워드 목록 옵션 한글 문장 표시 확인 (1.29)
@@ -343,7 +347,8 @@ if (-not $Action) {
 if (-not $hasFont) { $O.font = $false }
 $on = $feat.Keys | Where-Object { $O[$_] } | ForEach-Object { $feat[$_] }
 $short = [ordered]@{ carry = T '자동등록' 'stash'; pickup = T '즉시습득' 'pickup'; goldchest = T '골드상자' 'gold'; overflow = T '꽉차면창고' 'overflow'; skillcharm = T '스킬부적창고' 'skillcharm'; log = T '획득목록' 'log'; swpop = T '교체창' 'swap'; twins = T '비교상자' 'compare'; hidden = T '숨은값' 'hidden'; auto = T '자동진행' 'auto'; nopause = T '창안멈춤' 'nopause'; stash = T 'B창고' 'Bstash'; afk = 'AFK'; speed = T '배속' 'speed'; bright = T '밝기명암' 'bright'; corpse = T '시체숨김' 'corpse'; fps = 'FPS'; font = T '폰트' 'font' }
-$applied = (($short.Keys | ForEach-Object { $(if ($O[$_]) { [char]0x2713 } else { [char]0x2717 }) + $short[$_] }) -join ' · ') + ' | ' + $(if ($O.auto) { $(if ($O.automode -eq 'next') { T '다음 단계' 'next tier' } else { T '같은 단계' 'same tier' }) + " $($O.delay)" + (T '초' 's') + ' · ' } else { '' }) + (T '해상도 ' 'res ') + $(if ([int]$O.res -gt 0) { "$($O.res)%" } else { T '자동' 'auto' }) + ' · ' + (T 'FPS 제한 ' 'FPS cap ') + $(if ([int]$O.fpscap -gt 0) { $O.fpscap } else { T '없음' 'none' })
+function MkApplied { (($short.Keys | ForEach-Object { $(if ($O[$_]) { [char]0x2713 } else { [char]0x2717 }) + $short[$_] }) -join ' · ') + ' | ' + $(if ($O.auto) { $(if ($O.automode -eq 'next') { T '다음 단계' 'next tier' } else { T '같은 단계' 'same tier' }) + " $($O.delay)" + (T '초' 's') + ' · ' } else { '' }) + (T '해상도 ' 'res ') + $(if ([int]$O.res -gt 0) { "$($O.res)%" } else { T '자동' 'auto' }) + ' · ' + (T 'FPS 제한 ' 'FPS cap ') + $(if ([int]$O.fpscap -gt 0) { $O.fpscap } else { T '없음' 'none' }) }
+$applied = MkApplied
 
 if ($Action -eq 'restore') {
     if (-not $patched) { Fail (T '패치가 적용되어 있지 않습니다. 복구할 것이 없습니다.' 'The patch is not applied. Nothing to restore.') }
@@ -369,16 +374,18 @@ if ($patched) {
     $fromBackup = $true
 }
 
+$bad = @()
+try {
 # --- 축약된 함수 이름은 버전마다 바뀌므로 주변 코드로 찾아낸다 ---
 $id = '[\w$]+'
 function Find($text, $pattern, $what) {
     $m = [regex]::Matches($text, $pattern)
-    if ($m.Count -ne 1) { Fail (T "이 게임 버전은 지원하지 않습니다 ($what)." "This game version is not supported ($what).") }
+    if ($m.Count -ne 1) { throw "D2SUNSUP:$what" }
     $m[0]
 }
 function Swap($text, $old, $new, $what) {
     $i = $text.IndexOf($old)
-    if ($i -lt 0 -or $i -ne $text.LastIndexOf($old)) { Fail (T "이 게임 버전은 지원하지 않습니다 ($what)." "This game version is not supported ($what).") }
+    if ($i -lt 0 -or $i -ne $text.LastIndexOf($old)) { throw "D2SUNSUP:$what" }
     $text.Substring(0, $i) + $new + $text.Substring($i + $old.Length)
 }
 
@@ -402,41 +409,48 @@ $tabsLocal = (Find $movedText ('(' + $id + ')=\[`personal`,\.\.\.' + $id + '\]')
 $tabsExp = (Find $movedText ('[{,]' + [regex]::Escape($tabsLocal) + ' as (' + $id + ')[,}]') 'tabs export').Groups[1].Value
 $tabs = (Find $game ('[{,]' + [regex]::Escape($tabsExp) + ' as (' + $id + ')[,}]') 'tabs import').Groups[1].Value
 if ($O.overflow) {
+$snap = @($game, $keepText, $uiText, $mainText, $langText, $header); try {
 $game = Swap $game "let t=this.inventoryOf(this.world.player.cls),n=$fit(t,e,$igrid);if(!n)return!1;" "let t=this.inventoryOf(this.world.player.cls),n=$fit(t,e,$igrid);if(!n){for(let k of $tabs){let a=$tab(this.save,this.world.player.cls,k),p=$fit(a,e,$sgrid);if(p)return $put(a,e,p),$save(this.save),globalThis.__st=1,!0}return!1}" 'stash overflow'
-}
+} catch { if ("$_" -notlike 'D2SUNSUP*') { throw }; $game, $keepText, $uiText, $mainText, $langText, $header = $snap; $bad += 'overflow' } }
 $uiText = ReadFile $uiEntry
 $uiText = Swap $uiText 'function I_(e){if(!e||e.done)return``;' 'function I_(e){globalThis.__wave=e;if(!e||e.done)return``;' 'afk wave'
 if ($O.stash) {
+$snap = @($game, $keepText, $uiText, $mainText, $langText, $header); try {
 # 창고 창이 닫혀 있어도 인벤토리에서 Ctrl+클릭하면 개인 → 공용 창고 빈자리로 보낸다
 $game = Swap $game '...n&&{toStash:n=>{' ("__toStash:n=>{let a=s();if(!a.includes(n))return;for(let k of $tabs){let b=$tab(i,e,k),p=$fit(b,n,$sgrid);if(p)return r.change(()=>{$rm(a,n),$put(b,n,p)}),this.moved(n),t()}this.hud.refuse(``" + (T '창고가 가득 찼습니다' 'Stash is full') + "``)},...n&&{toStash:n=>{") 'ctrl stash'
 $uiText = Swap $uiText 'click:r=>{r.shiftKey?n.sell(e.item):o&&(r.ctrlKey||r.metaKey)?' 'click:r=>{!o&&(r.ctrlKey||r.metaKey)&&n.__toStash?n.__toStash(e.item):r.shiftKey?n.sell(e.item):o&&(r.ctrlKey||r.metaKey)?' 'ctrl click'
-}
+} catch { if ("$_" -notlike 'D2SUNSUP*') { throw }; $game, $keepText, $uiText, $mainText, $langText, $header = $snap; $bad += 'stash' } }
 if ($O.nopause) {
+$snap = @($game, $keepText, $uiText, $mainText, $langText, $header); try {
 # 런 도중 캐릭터/인벤토리/스킬/퀘스트 창을 열어도 게임이 멈추지 않고 계속 진행 (Esc 일시정지는 그대로)
 $game = Swap $game 'let i=this.state===`playing`&&this.strayPlay();for(let e=0;e<I.speed*t&&i&&this.state===`playing`&&!r;e++)' 'let __lv=()=>this.state===`playing`||this.state===`character`&&this.characterReturn===`playing`&&!this.camp,i=__lv()&&this.strayPlay();for(let e=0;e<I.speed*t&&i&&__lv();e++)' 'live panels'
 $game = Swap $game 'this.state===`character`&&qt(this.world,' 'this.state===`character`&&this.characterReturn!==`playing`&&qt(this.world,' 'live panels idle'
-}
+} catch { if ("$_" -notlike 'D2SUNSUP*') { throw }; $game, $keepText, $uiText, $mainText, $langText, $header = $snap; $bad += 'nopause' } }
 if ($O.twins) {
+$snap = @($game, $keepText, $uiText, $mainText, $langText, $header); try {
 # 툴팁 옆 게임 비교 상자: 같은 이름·같은 종류만, 등록/개인 창고/공용 창고 1~3/인벤 위치와 좋고 나쁨 표시 (최대 3개)
 $game = "globalThis.__twins=e=>{let g=globalThis.__gm;if(!g||!/^(unique|set|runeword)`$/.test(e.rarity))return null;let c=g.kit?.id,K=__kd(e),m=x=>x!==e&&x.rarity===e.rarity&&x.name===e.name&&__kd(x)===K,v=x=>__gt(x,e)?``$(T '▲ 보관본이 더 좋음' '▲ stored is better')``:__gt(e,x)?``$(T '▼ 보관본이 더 나쁨' '▼ stored is worse')``:``$(T '= 같음' '= same')``,q=x=>__gt(x,e)?``better``:__gt(e,x)?``worse``:``equipped``,r=[];for(let x of g.save.uniques??[])m(x)&&r.push({label:``$(T '등록' 'Stashed') · ``+v(x),item:x,cls:q(x)});for(let k of $tabs)for(let x of $tab(g.save,c,k))m(x)&&r.push({label:({personal:``$(T '개인 창고' 'Personal')``,shared1:``$(T '공용 창고 1' 'Shared 1')``,shared2:``$(T '공용 창고 2' 'Shared 2')``,shared3:``$(T '공용 창고 3' 'Shared 3')``}[k]??k)+`` · ``+v(x),item:x,cls:q(x)});for(let x of g.inventoryOf(c))m(x)&&r.push({label:``$(T '인벤' 'Inventory') · ``+v(x),item:x,cls:q(x)});return r.slice(0,3)};" + $game
 $uiText = Swap $uiText 'c=[...o?[{label:xt,item:o}]:[],' 'c=[...(globalThis.__twins?.(e)?.slice(0,Math.max(1,3-(s?a.length:0)))??(o?[{label:xt,item:o}]:[])),' 'twin boxes'
 $uiText = Swap $uiText 'e.replaceChildren(R(`equipped`,c[t].label),' 'e.replaceChildren(R(c[t].cls??`equipped`,c[t].label),' 'twin colors'
 $uiText = Swap $uiText ',!n)return el(this.node);$c(e,this.node,t,' ',!n&&!globalThis.__twins?.(e)?.length)return el(this.node);$c(e,this.node,t,' 'twin equipped'
-}
+} catch { if ("$_" -notlike 'D2SUNSUP*') { throw }; $game, $keepText, $uiText, $mainText, $langText, $header = $snap; $bad += 'twins' } }
 if ($O.hidden) {
+$snap = @($game, $keepText, $uiText, $mainText, $langText, $header); try {
 # 툴팁 맨 아래에 화면에 안 나오는 숨겨진 값 표시 (비교 계산에는 넣지 않음)
 $game = "globalThis.__hid=e=>(e.stats??[]).flatMap(b=>b.stat===``coldlength``?[``$(T '숨겨진 값' 'Hidden'): $(T '냉기 지속 시간' 'cold duration') ``+(b.value/25).toFixed(1)+``$(T '초' 's')``]:b.stat===``item_extrablood``?[``$(T '숨겨진 값' 'Hidden'): $(T '피 튀김 효과 증가' 'extra blood') ``+b.value]:b.stat===``maxdurability``?[``$(T '숨겨진 값' 'Hidden'): $(T '최대 내구도' 'max durability') ``+b.value]:[]);" + $game
 $uiText = Swap $uiText 'function Uc(e,t,n=Di(I.held||I.tapped)){let r=' 'function Uc(e,...a){return[...Uc0(e,...a),...(globalThis.__hid?.(e)??[]).map(t=>R(`inert`,t))]}function Uc0(e,t,n=Di(I.held||I.tapped)){let r=' 'hidden stats'
-}
+} catch { if ("$_" -notlike 'D2SUNSUP*') { throw }; $game, $keepText, $uiText, $mainText, $langText, $header = $snap; $bad += 'hidden' } }
 if ($O.carry) {
+$snap = @($game, $keepText, $uiText, $mainText, $langText, $header); try {
 # 미등록 유니크/세트/룬워드는 보관함에 등록. 스킬 옵션 합 > 오라·발동 기술 레벨 합 > 그 외 옵션 합 > 방어력 옵션 합 순서로 비교해 높으면 교체하고
 # 밀려난 옛 아이템은 룬워드면 인벤토리, 아니면 판매. 중복 룬워드는 인벤토리로 (아래 일반 경로)
 $game = Swap $game 'carry(e){let t=this.inventoryOf' "carry(e){if($canKeep(this.save,e))return $keep(this.save,e),$save(this.save),$sound(e.base),this.hud.banner($name(e.name,e.rarity,e.base)+``$suffix``,e.rarity),!0;if(!this.__nx){let o=__bt(this.save,e)&&$swap(this.save,e);if(o)return $save(this.save),$sound(e.base),this.hud.banner($name(e.name,e.rarity,e.base)+``$swapped``,e.rarity),__sw($name(e.name,e.rarity,e.base),o,e),globalThis.__swu=o.rarity===``runeword``?null:()=>{let s=this.save.uniques,i=s?.indexOf(e)??-1;if(i<0||!this.world)return!1;s[i]=o;this.world.gold-=$price(this.save,this.world.player.cls,o);$save(this.save);this.autoSell(e);return!0},o.rarity===``runeword``?(this.__nx=1,this.carry(o)||this.autoSell(o),this.__nx=0):this.autoSell(o),!0}if(e.rarity===``runeword``){let K=__kd(e),A=[this.inventoryOf(this.world.player.cls),...$tabs.map(k=>$tab(this.save,this.world.player.cls,k))],C=A.flatMap(a=>a.filter(x=>x!==e&&x.rarity===``runeword``&&x.name===e.name&&__kd(x)===K).map(x=>[a,x]));let g=this.save.uniques?.find(x=>x!==e&&x.rarity===``runeword``&&x.name===e.name),h=/1`$/.test(K),L=g&&__kd(g)===K?+h:h?2:1;if(!L)return this.autoSell(e),globalThis.__st=2,!0;if(C.length>=L){let w=C.reduce((m,c)=>__gt(m[1],c[1])?c:m);if(!__gt(e,w[1]))return this.autoSell(e),globalThis.__st=2,!0;$rm(w[0],w[1]),this.autoSell(w[1])}}let t=this.inventoryOf" 'carry'
-}
+} catch { if ("$_" -notlike 'D2SUNSUP*') { throw }; $game, $keepText, $uiText, $mainText, $langText, $header = $snap; $bad += 'carry' } }
 # 스킬 옵션이 붙은 부적은 인벤토리 대신 개인 → 공용 창고 빈자리로 (창고가 꽉 차면 인벤토리)
 if ($O.skillcharm) {
+$snap = @($game, $keepText, $uiText, $mainText, $langText, $header); try {
     $game = Swap $game "let t=this.inventoryOf(this.world.player.cls),n=$fit(" ("if((e.type===``charm``||globalThis.__kd?.(e)===``charm``)&&[...(e.stats??[]),...(e.mods??[])].some(b=>/skill/i.test(b.stat)))for(let k of $tabs){let a=$tab(this.save,this.world.player.cls,k),p=$fit(a,e,$sgrid);if(p)return $put(a,e,p),$save(this.save),globalThis.__st=1,!0}let t=this.inventoryOf(this.world.player.cls),n=$fit(") 'skill charm'
-}
+} catch { if ("$_" -notlike 'D2SUNSUP*') { throw }; $game, $keepText, $uiText, $mainText, $langText, $header = $snap; $bad += 'skillcharm' } }
 # 주운 아이템을 화면 왼쪽 목록에 표시 (금색: 등록, 하늘색: 교체, 흰색: 인벤토리). 최근 15개
 $tags = '[`[' + (T '인벤' 'bag') + '] `,`[' + (T '등록' 'stashed') + '] `,`[' + (T '교체' 'upgraded') + '] `,`[' + (T '창고' 'stash') + '] `,`[' + (T '판매' 'sold') + '] `]'
 $game = 'globalThis.__sc=x=>{let r=[0,0,0,0];for(let b of x.stats??[]){let v=+b.value||0,s=b.stat;if(/^(coldlength|poisonlength|poisoncount|durability|maxdurability|item_extrablood)$/.test(s))continue;/^item_(allskills|addclassskills|addskill_tab|singleskill|nonclassskill|elemskill)$/.test(s)?r[0]+=v:s===`item_aura`?r[1]+=v:/^item_(skillon|charged_skill)/.test(s)?(r[1]+=+b.level||0,r[2]+=v):/^(item_armor|armorclass)/.test(s)?r[3]+=v:r[2]+=v}return r};globalThis.__gt=(x,y)=>{let a=__sc(x),b=__sc(y);for(let i=0;i<4;i++)if(a[i]!==b[i])return a[i]>b[i];return!1};globalThis.__bt=(s,e)=>{let u=s.uniques?.find(u=>u!==e&&u.rarity===e.rarity&&u.name===e.name);if(!u)return!1;if(e.rarity===`runeword`){let p=globalThis.__kd?.(u),q=globalThis.__kd?.(e);if(p!==q)return!!p&&!!q&&p.slice(0,-1)===q.slice(0,-1)&&/2$/.test(p)&&/1$/.test(q)}return __gt(e,u)};globalThis.__lg=(t,k,s,it)=>{let d=document.getElementById(`__lg`);d||(()=>{let W=document.createElement(`div`),H=document.createElement(`div`),g={};try{g=JSON.parse(localStorage.getItem(`d2s:lgpos`)||`{}`)}catch{}W.id=`__lgw`,W.style.cssText=`position:fixed;left:${g.x??8}px;${g.y!=null?`top:${g.y}px`:`bottom:16%`};width:${g.w??Math.round(innerWidth*' + [int]$O.logw + '/100)}px;height:${g.h?g.h+`px`:`calc(' + $O.logn + '*1.35em + 26px)`};z-index:9999;display:flex;flex-direction:column;background:#0005;border-radius:4px;resize:both;overflow:hidden;min-width:160px;min-height:60px;font:bold ' + $(if ([int]$O.logsize -gt 0) { "$($O.logsize)px" } else { 'clamp(11px,0.75vw,16px)' }) + ' sans-serif;line-height:1.35`,H.textContent=`\u283f ' + (T '획득 목록 (끌어서 이동 · 오른쪽 아래 모서리로 크기 조절)' 'Pickup log (drag to move · corner to resize)') + '`,H.style.cssText=`cursor:move;font:11px sans-serif;color:#aaa;padding:2px 6px;background:#000a;user-select:none;flex:none`,d=document.createElement(`div`),d.id=`__lg`,d.style.cssText=`flex:1;overflow-y:auto;overflow-x:hidden;padding:2px 8px;scrollbar-width:thin;scrollbar-color:#666 transparent;text-shadow:0 0 3px #000,0 0 3px #000`,W.append(H,d),document.body.append(W),d.addEventListener(`wheel`,e=>{d.scrollTop+=e.deltaY,e.preventDefault(),e.stopPropagation()},{passive:!1});try{for(let[t,c]of JSON.parse(localStorage.getItem(`d2s:lglog`)||`[]`)){let x=document.createElement(`div`);x.textContent=t,x.style.color=c,x.style.opacity=`.7`,d.append(x)}}catch{}requestAnimationFrame(()=>d.scrollTop=d.scrollHeight);let sv=()=>{let r=W.getBoundingClientRect();try{localStorage.setItem(`d2s:lgpos`,JSON.stringify({x:Math.round(r.left),y:Math.round(r.top),w:Math.round(r.width),h:Math.round(r.height)}))}catch{}};H.onpointerdown=e=>{e.preventDefault(),e.stopPropagation();let r=W.getBoundingClientRect(),ox=e.clientX-r.left,oy=e.clientY-r.top,mv=e=>{W.style.left=Math.max(0,Math.min(innerWidth-60,e.clientX-ox))+`px`,W.style.top=Math.max(0,Math.min(innerHeight-24,e.clientY-oy))+`px`,W.style.bottom=``},up=()=>{removeEventListener(`pointermove`,mv),removeEventListener(`pointerup`,up),sv()};addEventListener(`pointermove`,mv),addEventListener(`pointerup`,up)};W.onpointerdown=e=>e.stopPropagation();new ResizeObserver(()=>W.offsetWidth&&sv()).observe(W)})();let l=document.createElement(`div`);l.style.color=[`#fff`,`#e8c060`,`#8cf`,`#c9a`,`#999`][k];let D=new Date,P=x=>String(x).padStart(2,`0`);l.textContent=`[${D.getMonth()+1}/${D.getDate()} ${P(D.getHours())}:${P(D.getMinutes())}] `+' + $tags + '[k]+t+(s&&k!==4?` (`+s+`)`:``);(k===2&&globalThis.__swh?(l.__h=globalThis.__swh,globalThis.__swh=null):it&&(l.__h=`<div style="color:${l.style.color};font-weight:bold">${(' + $tags + '[k]+t).replace(/</g,`&lt;`)}</div>`+String(s??``).split(` → `).map(x=>`<div style="color:#999">${x.replace(/</g,`&lt;`)}</div>`).join(``)+(globalThis.__tip?.(it)??[]).map(x=>`<div>${String(x).replace(/</g,`&lt;`)}</div>`).join(``)),l.__h)&&(l.style.pointerEvents=`auto`,l.onpointerenter=()=>{let w=__swd(),r=l.getBoundingClientRect();w.innerHTML=l.__h;w.style.display=``;w.style.left=r.right+10+`px`;w.style.top=Math.max(4,Math.min(r.top,innerHeight-w.offsetHeight-4))+`px`;clearTimeout(w.__t)},l.onpointerleave=()=>{document.getElementById(`__sw`).style.display=`none`});k===2&&globalThis.__swu&&(()=>{let f=globalThis.__swu,b=document.createElement(`span`);globalThis.__swu=null;b.textContent=` [' + (T '되돌리기' 'Undo') + ']`;b.style.cssText=`color:#f96;cursor:pointer;pointer-events:auto`;b.onpointerdown=b.onmousedown=x=>{x.stopPropagation();x.preventDefault();f()?(l.style.textDecoration=`line-through`,b.textContent=` [' + (T '되돌림' 'Undone') + ']`,b.onpointerdown=b.onmousedown=null):b.textContent=` [' + (T '불가' 'Failed') + ']`};l.append(b)})();let B=d.scrollHeight-d.scrollTop-d.clientHeight<10;d.append(l);for(;d.children.length>300;)d.firstChild.remove();B&&(d.scrollTop=d.scrollHeight);clearTimeout(d.__sv),d.__sv=setTimeout(()=>{try{localStorage.setItem(`d2s:lglog`,JSON.stringify([...d.children].map(x=>[x.firstChild?.nodeType===3?x.firstChild.nodeValue:x.textContent,x.style.color])))}catch{}},1e3)};' + $game
@@ -450,46 +464,53 @@ $game = "globalThis.__nm=e=>$name(e.name,e.rarity,e.base);" + 'globalThis.__cmp=
 $game = Swap $game 'openCharacter(e,t=this.kit.id){' 'openCharacter(e,t=this.kit.id){globalThis.__gm=this;' 'compare save'
 $game = Swap $game 'carry:e=>{let k=' 'carry:e=>{globalThis.__gm=this;let k=' 'compare save run'
 if ($O.stash) {
+$snap = @($game, $keepText, $uiText, $mainText, $langText, $header); try {
 # 런 도중 B 키로 창고를 연다 (캐릭터 창 + 창고 탭). 닫으면 원래대로
 $game = Swap $game 'this.characterView(n,t,e===`town`),{...this.gearActions(t,()=>this.openCharacter(e,t),e===`town`)' 'this.characterView(n,t,e===`town`||!!this.__stash),{...this.gearActions(t,()=>this.openCharacter(e,t),e===`town`||!!this.__stash)' 'stash key view'
 $game = Swap $game 'close:()=>{this.putBack(),this.tomeRead=null,' 'close:()=>{this.__stash=0,this.putBack(),this.tomeRead=null,' 'stash key close'
 $game = Swap $game '(e.code===`KeyC`||e.code===`KeyI`)&&this.state===`playing`?this.openCharacter(`playing`)' 'e.code===`KeyB`&&(this.state===`playing`||this.state===`camp`&&!this.swapping)?(this.__stash=1,this.openCharacter(this.state)):(e.code===`KeyC`||e.code===`KeyI`)&&this.state===`playing`?(this.__stash=0,this.openCharacter(`playing`))' 'stash key'
-}
+} catch { if ("$_" -notlike 'D2SUNSUP*') { throw }; $game, $keepText, $uiText, $mainText, $langText, $header = $snap; $bad += 'stash' } }
 if ($O.auto) {
+$snap = @($game, $keepText, $uiText, $mainText, $langText, $header); try {
 # 공포 단계 클리어 화면에서 4초 뒤 자동 진행: 다시 하기(replay) 단계면 같은 단계 재시작, 아니면 Enter와 같은 동작. 상점·종료로 나가면 취소
 $game = Swap $game 'showTierCleared(){let e=this.tierDone;if(!e)return this.toMenu();' ('showTierCleared(){let e=this.tierDone;if(!e)return this.toMenu();clearTimeout(this.__ar),__cd(' + $O.delay + ',`' + $(if ($O.automode -eq 'next') { T '#초 뒤 다음 단계' 'Next tier in #s' } else { T '#초 뒤 같은 단계 재시작' 'Restarting in #s' }) + '`),this.__ar=setTimeout(()=>{this.tierDone===e&&(' + $(if ($O.automode -eq 'next') { 'e.replay?(this.tierDone=null,this.startReplay(this.kit,e.tier+1)):this.nextTier()' } else { 'this.tierDone=null,this.startReplay(this.kit,e.tier)' }) + ')},' + $O.delay + 'e3);') 'auto repeat'
 # 공포 단계 보스 처치 후 포털이 열리면 4초 뒤 자동 입장 (클리어 화면으로)
 $portal = Find $game ('this\.hud\.banner\(`A portal to \$\{' + $id + '\(t,' + $id + '\)\} has opened`\),!1\}') 'portal'
 $game = Swap $game $portal.Value ($portal.Value.Substring(0, $portal.Value.Length - 3) + 't.terror&&(__cd(' + $O.delay + ',`' + (T '#초 뒤 포털 입장' 'Entering portal in #s') + '`)),!1}') 'portal'
 $game = Swap $game 'o=jr(r,a,!!n.portal?.through(t,e,a!==null&&a>=1.5))' ('o=jr(r,a,!!n.portal?.through(t,e,a!==null&&a>=1.5)||!!(t.terror&&a!==null&&a>=' + $O.delay + '))') 'portal enter'
-}
+} catch { if ("$_" -notlike 'D2SUNSUP*') { throw }; $game, $keepText, $uiText, $mainText, $langText, $header = $snap; $bad += 'auto' } }
 # AFK 모드 (F8): 화면을 검게 덮고 진행 상황·획득 목록·종료 버튼만 표시. 창을 내리거나 가려도 멈추지 않음
 if ($O.speed) {
+$snap = @($game, $keepText, $uiText, $mainText, $langText, $header); try {
 # 배속 (F7): 1 → 1.5 → 2 → 3배 순환. 프레임당 게임 업데이트 횟수를 늘림 (1.5배는 남는 0.5를 다음 프레임으로 넘김)
 $game = 'globalThis.__spd=1;globalThis.__spdA=0;globalThis.__spdS=(x,d,on)=>{let a=globalThis.__spdA+x*globalThis.__spd,k=Math.floor(a);return globalThis.__spdA=a-k,on&&globalThis.__afk&&(globalThis.__afkG=(globalThis.__afkG||0)+k*d),k};document.addEventListener(`keydown`,e=>{if(e.code!==`F7`)return;e.preventDefault(),e.stopPropagation();let l=[1,1.5,2,3];globalThis.__spd=l[(l.indexOf(globalThis.__spd)+1)%l.length],globalThis.__spdA=0;let o=document.getElementById(`__spd`);o||(o=document.createElement(`div`),o.id=`__spd`,o.style.cssText=`position:fixed;left:50%;top:24px;transform:translateX(-50%);z-index:9999;background:#000a;color:#fc6;border:1px solid #fc6;padding:2px 10px;font:bold 15px sans-serif;pointer-events:none`,document.body.append(o)),o.textContent=`' + (T '배속' 'Speed') + ' x${globalThis.__spd} (F7)`,o.style.display=globalThis.__spd===1?`none`:``},!0);' + $game
 $game = Swap $game 'for(let e=0;e<I.speed*t&&i&&' 'for(let e=0,S=globalThis.__spdS(I.speed*t,n,i&&this.state===`playing`&&!r);e<S&&i&&' 'speed'
-}
+} catch { if ("$_" -notlike 'D2SUNSUP*') { throw }; $game, $keepText, $uiText, $mainText, $langText, $header = $snap; $bad += 'speed' } }
 
 # 밝기·명암: 게임 화면 canvas에 필터. PageUp/PageDown 밝기, Home/End 명암. 기본값은 선택 창 값
 if ($O.bright) {
+$snap = @($game, $keepText, $uiText, $mainText, $langText, $header); try {
 $game = 'globalThis.__br=' + ([decimal]$O.brightness / 100).ToString($inv) + ';globalThis.__ct=' + ([decimal]$O.contrast / 100).ToString($inv) + ';globalThis.__brA=()=>{let f=(globalThis.__br===1?``:`brightness(${globalThis.__br}) `)+(globalThis.__ct===1?``:`contrast(${globalThis.__ct})`);document.querySelectorAll(`canvas`).forEach(c=>{c.classList.contains(`d2-text`)||(c.style.filter=f)})};setInterval(globalThis.__brA,2e3);document.addEventListener(`keydown`,e=>{let k={PageUp:[`__br`,.1],PageDown:[`__br`,-.1],Home:[`__ct`,.1],End:[`__ct`,-.1]}[e.code];if(!k)return;e.preventDefault(),e.stopPropagation(),globalThis[k[0]]=Math.min(2,Math.max(.5,Math.round((globalThis[k[0]]+k[1])*10)/10)),globalThis.__brA();let o=document.getElementById(`__brt`);o||(o=document.createElement(`div`),o.id=`__brt`,o.style.cssText=`position:fixed;left:50%;top:52px;transform:translateX(-50%);z-index:9999;background:#000a;color:#fc6;border:1px solid #fc6;padding:2px 10px;font:bold 15px sans-serif;pointer-events:none`,document.body.append(o)),o.textContent=`' + (T '밝기' 'Brightness') + ' ${Math.round(globalThis.__br*100)}% · ' + (T '명암' 'Contrast') + ' ${Math.round(globalThis.__ct*100)}%`,o.style.display=``,clearTimeout(o.__t),o.__t=setTimeout(()=>o.style.display=`none`,1500)},!0);' + $game
-}
+} catch { if ("$_" -notlike 'D2SUNSUP*') { throw }; $game, $keepText, $uiText, $mainText, $langText, $header = $snap; $bad += 'bright' } }
 # FPS 표시 (F9로 켜고 끔): 오른쪽 위
 if ($O.fps) {
+$snap = @($game, $keepText, $uiText, $mainText, $langText, $header); try {
 $game = 'globalThis.__fpsN=0;(function f(){globalThis.__fpsN++,requestAnimationFrame(f)})();setInterval(()=>{let o=document.getElementById(`__fps`);o&&(o.textContent=`FPS ${globalThis.__fpsN*2} · v' + $Ver + '`),globalThis.__fpsN=0},500);globalThis.__fpsT=()=>{let o=document.getElementById(`__fps`);if(o)return o.remove();o=document.createElement(`div`),o.id=`__fps`,o.style.cssText=`position:fixed;right:6px;top:24px;z-index:9999;background:#000a;color:#8e8;padding:1px 6px;font:bold 13px monospace;pointer-events:none`,o.textContent=`FPS · v' + $Ver + '`,document.body.append(o)};setTimeout(globalThis.__fpsT,3e3);document.addEventListener(`keydown`,e=>{e.code===`F9`&&(e.preventDefault(),e.stopPropagation(),globalThis.__fpsT())},!0);' + $game
-}
+} catch { if ("$_" -notlike 'D2SUNSUP*') { throw }; $game, $keepText, $uiText, $mainText, $langText, $header = $snap; $bad += 'fps' } }
 # FPS 제한 (0 = 제한 없음): 낮추면 CPU/GPU 부담이 줄어듦. 게임 진행 속도는 그대로
 if ([int]$O.fpscap -gt 0) {
+$snap = @($game, $keepText, $uiText, $mainText, $langText, $header); try {
     $mf = Find $game ('e\.ticker\.minFPS=1/' + $id + ',') 'fps cap'
     $game = Swap $game $mf.Value ($mf.Value + 'e.ticker.maxFPS=' + [int]$O.fpscap + ',') 'fps cap'
-}
+} catch { if ("$_" -notlike 'D2SUNSUP*') { throw }; $game, $keepText, $uiText, $mainText, $langText, $header = $snap; $bad += 'fpscap' } }
 # 렌더링 해상도 고정 (0 = 게임 자동): 낮추면 빨라지고 흐려짐
 if ([int]$O.res -gt 0) {
+$snap = @($game, $keepText, $uiText, $mainText, $langText, $header); try {
     $rv = ([decimal]$O.res / 100).ToString($inv)
     $ri = Find $uiText ('static initial\(e,t,n=\{width:innerWidth,height:innerHeight\}\)\{return t\?\?' + $id + '\(n\.width,n\.height,devicePixelRatio\|\|1,e\)\}') 'render res'
     $uiText = Swap $uiText $ri.Value ($ri.Value.Replace('{return t??', '{return ' + $rv + '||(t??').TrimEnd('}') + ')}') 'render res'
     $uiText = Swap $uiText 'apply(e){let t=this.app.renderer;' ('apply(e){e=' + $rv + ';let t=this.app.renderer;') 'render res apply'
-}
+} catch { if ("$_" -notlike 'D2SUNSUP*') { throw }; $game, $keepText, $uiText, $mainText, $langText, $header = $snap; $bad += 'res' } }
 
 # 게임 안 설명서(F6)와 룬워드 목록(F4): 오른쪽 창으로 열고 닫기
 $guide = @'
@@ -531,6 +552,13 @@ PageUp / PageDown  밝기,  Home / End  명암
 '@
 $game = 'globalThis.__guide=' + ($guide | ConvertTo-Json) + ';globalThis.__pnl=(id,title,html)=>{let o=document.getElementById(id);for(let x of[`__plog`,`__pguide`,`__prw`])document.getElementById(x)?.remove();if(o)return null;o=document.createElement(`div`),o.id=id,o.style.cssText=`position:fixed;right:20px;top:40px;bottom:40px;width:min(600px,46vw);overflow:auto;z-index:10003;background:#000e;color:#ddd;border:1px solid #fc6;padding:10px 14px;font:14px sans-serif;line-height:1.5`,o.innerHTML=`<div style="position:sticky;top:-10px;margin:-10px -14px 6px;padding:10px 14px 6px;background:#000;border-bottom:1px solid #333;z-index:1"><div style="color:#fc6;font-weight:bold">${title}</div></div>`+html;let x=o.querySelector(`.__phx`);x&&o.firstChild.append(x),document.body.append(o);return o};globalThis.__esc=t=>String(t).replace(/&/g,`&amp;`).replace(/</g,`&lt;`);globalThis.__rwHtml=()=>{try{return globalThis.__rwHtml0()}catch(x){return`<div style="color:#f77">' + (T '룬워드 목록 오류' 'Runeword list error') + ': ${__esc(x?.stack??x)}</div>`}};globalThis.__rwHtml0=()=>{let w=globalThis.__rw?.();if(!w?.R?.runewords)return`' + (T '룬워드 데이터를 아직 못 읽었습니다. 게임을 한 판 시작한 뒤 다시 열어 보세요.' 'Runeword data not loaded yet. Start a run and try again.') + '`;let ty={weap:`' + (T '무기' 'weapon') + '`,mele:`' + (T '근접 무기' 'melee') + '`,miss:`' + (T '원거리 무기' 'missile') + '`,swor:`' + (T '검' 'sword') + '`,axe:`' + (T '도끼' 'axe') + '`,pole:`' + (T '미늘창' 'polearm') + '`,spea:`' + (T '창' 'spear') + '`,hamm:`' + (T '망치' 'hammer') + '`,club:`' + (T '둔기' 'club') + '`,mace:`' + (T '철퇴' 'mace') + '`,scep:`' + (T '홀' 'scepter') + '`,staf:`' + (T '지팡이' 'staff') + '`,wand:`' + (T '마법봉' 'wand') + '`,knif:`' + (T '단검' 'dagger') + '`,h2h:`' + (T '손톱' 'claw') + '`,bow:`' + (T '활' 'bow') + '`,xbow:`' + (T '석궁' 'crossbow') + '`,helm:`' + (T '투구' 'helm') + '`,tors:`' + (T '갑옷' 'armor') + '`,shld:`' + (T '방패' 'shield') + '`,pala:`' + (T '성기사 방패' 'paladin shield') + '`,head:`' + (T '강령술사 머리' 'necro head') + '`,orb:`' + (T '오브' 'orb') + '`,abow:`' + (T '아마존 활' 'amazon bow') + '`,aspe:`' + (T '아마존 창' 'amazon spear') + '`,jave:`' + (T '투창' 'javelin') + '`},K=t=>String(t).replace(/[0-9.]+/g,`#`),out=[];for(let v of w.list??[]){try{let d=w.R.runewords[v.name];if(!d?.props?.length)continue;let sl=v.types?.some(t=>/^(shld|pala|head)$/.test(t))?`shield`:v.types?.some(t=>/^(helm|tors)$/.test(t))?`helm`:`weapon`,mk=m=>{let st=w.make([...d.props,...(v.runes??[]).flatMap(r=>w.R.runes?.[r]?.[sl]??[])],v.lvl,(a,b)=>m===`min`?Math.min(a,b):Math.max(a,b));try{let bs=sl===`shield`?`Ward`:sl===`helm`?(v.types?.includes(`tors`)?`Russet Armor`:`Shako`):`Flanged Mace`,tp=x=>globalThis.__tip?.({name:v.name,rarity:`runeword`,base:bs,stats:x})??[],l=tp(st),z=tp([]),c={};for(let x of z)c[x]=(c[x]||0)+1;l=l.filter(x=>c[x]>0?(c[x]--,!1):!0);if(l.length)return l}catch{}return st.map(s=>s.stat+(s.param!=null?`(${s.param})`:``)+` `+s.value+(s.level!=null?` lv${s.level}`:``))},a=mk(`min`),b=mk(`max`),B=new Set,L=a.map(p=>{let j=b.findIndex((q,J)=>!B.has(J)&&K(q)===K(p));if(j<0)return`<div style="color:#aaa">${__esc(p)}</div>`;B.add(j);return b[j]===p?`<div style="color:#aaa">${__esc(p)}</div>`:`<div style="color:#fc6">${__esc(p)} <span style="color:#888">~</span> ${__esc(b[j])}</div>`}).join(``),nm=v.name;try{nm=globalThis.__nm?.({name:v.name,rarity:`runeword`})||v.name}catch{}out.push(`<div class="rw" data-k="${__esc((nm+` `+v.name+` `+v.runes.join(` `)).toLowerCase())}" style="margin:8px 0;padding-top:6px;border-top:1px solid #333"><div><b style="color:#c9a">${__esc(nm)}</b></div><div style="color:#8cf">${v.runes.join(` + `)} · ' + (T '레벨' 'lvl') + ' ${v.lvl} · ${(v.types??[]).map(t=>ty[t]??t).join(`, `)}</div>${L}</div>`)}catch(x){out.push(`<div style="color:#f77">${__esc(v.name)}: ${__esc(x?.message??x)}</div>`)}}return`<div class="__phx"><div style="color:#888;margin-bottom:4px">' + (T '노랑 = 변하는 옵션 (최소 ~ 최대), 회색 = 고정 옵션' 'yellow = variable (min ~ max), grey = fixed') + '</div><input id="__prwq" placeholder="' + (T '검색 (이름, 룬)' 'search (name, rune)') + '" style="width:100%;box-sizing:border-box;padding:4px 6px;background:#111;color:#ddd;border:1px solid #555;font:14px sans-serif"></div>`+out.join(``)};document.addEventListener(`keydown`,e=>{if(e.target?.id===`__prwq`&&!/^F[0-9]+$/.test(e.code)){e.stopPropagation();return}let k={F6:1,F4:2}[e.code];if(!k)return;e.preventDefault(),e.stopPropagation();if(k===1)globalThis.__pnl(`__pguide`,`' + (T '설명서' 'Guide') + ' v' + $Ver + ' (F6 ' + (T '닫기' 'close') + ')`,`<div style="white-space:pre-line">${__esc(globalThis.__guide)}</div>`);else{let o=globalThis.__pnl(`__prw`,`' + (T '룬워드 목록' 'Runewords') + ' (F4 ' + (T '닫기' 'close') + ')`,globalThis.__rwHtml());let q=o?.querySelector(`#__prwq`);q&&(q.oninput=()=>{let t=q.value.toLowerCase();o.querySelectorAll(`.rw`).forEach(x=>x.style.display=x.dataset.k.includes(t)?``:`none`)},q.focus())}},!0);' + $game
 
+# 게임 새 빌드가 준비되면 알림: 설치하면 패치가 풀리고, 설치 후 bat를 실행하면 되는 기능만 다시 적용 (안 맞으면 이 알림만 생략)
+$snap = @($game, $keepText, $uiText, $mainText, $langText, $header); try {
+$gu = Find $game ('(' + $id + ')\.onReady\(e=>\{this\.state!==`select`') 'game update'
+$game = Swap $game $gu.Value ($gu.Value.Replace('onReady(e=>{', 'onReady(e=>{globalThis.__gupd?.(e);')) 'game update'
+$game = 'globalThis.__gupd=v=>{if(document.getElementById(`__gupd`))return;let d=document.createElement(`div`);d.id=`__gupd`,d.textContent=`' + (T '게임 새 빌드 ' 'Game build ') + '${v}' + (T ' 준비됨. 설치하면 패치가 풀립니다. 설치 후 D2S-MyPatch.bat 를 실행하면 이 빌드에서 되는 기능만 다시 적용하고 안 되는 기능을 알려 줍니다.' ' is ready. Installing removes the patch. After installing, run D2S-MyPatch.bat to re-apply what still works.') + '`,d.style.cssText=`position:fixed;right:8px;bottom:120px;z-index:10001;background:#000d;color:#8cf;border:1px solid #8cf;padding:6px 10px;font:14px sans-serif;max-width:420px`,document.body.append(d)};' + $game
+} catch { if ("$_" -notlike 'D2SUNSUP*') { throw }; $game, $keepText, $uiText, $mainText, $langText, $header = $snap }
+
 # 게임 안 패치 기록 (F10으로 열고 닫기)
 $game = 'globalThis.__plog=' + ($changelog | ConvertTo-Json) + ';document.addEventListener(`keydown`,e=>{if(e.code!==`F10`)return;e.preventDefault(),e.stopPropagation();let o=document.getElementById(`__plog`);if(o)return o.remove();o=document.createElement(`div`),o.id=`__plog`,o.style.cssText=`position:fixed;right:20px;top:60px;bottom:60px;width:440px;overflow:auto;z-index:10003;background:#000e;color:#ddd;border:1px solid #fc6;padding:10px 14px;font:14px sans-serif;line-height:1.5;white-space:pre-line`,o.textContent=`' + (T '패치 기록' 'Patch log') + ' v' + $Ver + ' (F10 ' + (T '닫기' 'close') + ')\n`+globalThis.__papp+`\n\n`+globalThis.__plog,document.body.append(o)},!0);setTimeout(()=>{let h=document.createElement(`div`);h.id=`__pbar`,h.style.cssText=`position:fixed;left:0;right:0;top:0;z-index:10000;background:#000b;color:#ccc;padding:2px 8px;font:12px sans-serif;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;pointer-events:none`,h.innerHTML=`<span style="color:#fc6;font-weight:bold">D2S v' + $Ver + '</span> <span style="color:#999">(' + (T '게임 빌드 ' 'build ') + $build + ')</span> · <span style="color:#8cf">F6 ' + (T '설명서' 'guide') + ' · F4 ' + (T '룬워드' 'runewords') + ' · F10 ' + (T '패치 기록' 'patch log') + '</span> · `+globalThis.__papp.replace(/</g,`&lt;`).replace(/\u2713([^ ·|]+)/g,`<span style="color:#7e7">\u2713$1</span>`).replace(/\u2717([^ ·|]+)/g,`<span style="color:#f77">\u2717$1</span>`),document.body.append(h)},3e3);' + $game
 $game = 'globalThis.__papp=' + ($applied | ConvertTo-Json) + ';' + $game
@@ -544,39 +572,44 @@ $game = 'globalThis.__updShow=t=>{let L=t.split(/\r?\n/);let o=document.getEleme
 (the current run may not be saved)') + '
 `,b(`' + (T '예' 'Yes') + '`,()=>{q.textContent=`' + (T '게임을 종료합니다...' 'Closing...') + '`,fetch(`https://d2s-update.invalid/run`).catch(()=>{})}),b(`' + (T '아니오' 'No') + '`,()=>q.remove()),document.body.append(q)},document.body.append(d)}};' + $game
 if ($O.afk) {
+$snap = @($game, $keepText, $uiText, $mainText, $langText, $header); try {
 $game = 'globalThis.__afkN={};globalThis.__afkAdd=(k,r)=>{let a=[2,0,1,2,3][k],c={unique:0,set:1,runeword:2}[r]??3,n=globalThis.__afkN;(n[a]??=[0,0,0,0])[c]++};globalThis.__afk=0;globalThis.__afkT=()=>{let o=document.getElementById(`__afk`);if(globalThis.__afk){globalThis.__afk=0,o&&o.remove(),clearInterval(globalThis.__afkI);return}globalThis.__afk=1,globalThis.__afkS=Date.now(),globalThis.__afkG=0,globalThis.__afkR=0,globalThis.__afkN={},globalThis.__afkL=0,globalThis.__afkTot=0;o=document.createElement(`div`),o.id=`__afk`,o.style.cssText=`position:fixed;inset:0;z-index:9998;background:#000;color:#ccc;font:16px sans-serif;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;line-height:1.6;text-align:center`;let s=document.createElement(`div`),b=document.createElement(`button`);b.textContent=`' + (T 'AFK 모드 종료 (F8)' 'Exit AFK mode (F8)') + '`,b.style.cssText=`font:bold 18px sans-serif;padding:10px 28px;background:#222;color:#fc6;border:1px solid #fc6;cursor:pointer`,b.onclick=()=>globalThis.__afkT(),o.append(s,b),document.body.append(o);let u=()=>{let g=globalThis.__gm,w=g?.world,m=Math.floor((Date.now()-globalThis.__afkS)/1e3);s.innerHTML=`<div style="font:bold 26px sans-serif;color:#fc6">' + (T 'AFK 모드' 'AFK mode') + '</div><div>' + (T '경과' 'Elapsed') + ' ${Math.floor(m/3600)}:${String(Math.floor(m/60)%60).padStart(2,0)}:${String(m%60).padStart(2,0)} · ' + (T '게임 시간' 'Game time') + ' ${(q=>`${Math.floor(q/3600)}:${String(Math.floor(q/60)%60).padStart(2,0)}:${String(q%60).padStart(2,0)}`)(Math.floor(globalThis.__afkG||0))}</div><div>' + (T '완료한 판' 'Runs cleared') + ' ${globalThis.__afkR}${(f=>globalThis.__afkR?` · ' + (T '이전 판' 'Last') + ' ${f(globalThis.__afkL)} · ' + (T '평균' 'Avg') + ' ${f(globalThis.__afkTot/globalThis.__afkR)}`:``)(x=>`${Math.floor(x/60)}:${String(Math.floor(x%60)).padStart(2,0)}`)}</div><div>${w?.terror?`' + (T '공포 영역' 'Terror') + ' ${w.terror.tier} · `:``}' + (T '처치' 'Kills') + ' ${w?.kills??0} · ' + (T '이번 판 골드' 'Run gold') + ' ${Math.floor(w?.gold??0).toLocaleString()}</div>${(v=>v&&!v.done?`<div style="color:#fc6">' + (T '웨이브' 'Wave') + ' ${v.wave}/${v.of} · ${v.left} ' + (T '남음' 'left') + '${v.elites?` · ' + (T '정예' 'elites') + ' ${v.elites}`:``}</div>`:``)(globalThis.__wave)}<div>' + (T '보유 골드' 'Gold') + ' ${Math.floor(g?.save?.gold??0).toLocaleString()}</div><div>' + (T '배속' 'Speed') + ' x${globalThis.__spd??1} (F7)</div><table style="margin:8px auto;border-collapse:collapse"><tr style="color:#888"><td></td><td style="padding:2px 10px;color:#c7b377">' + (T '유니크' 'Unique') + '</td><td style="padding:2px 10px;color:#4fd04f">' + (T '세트' 'Set') + '</td><td style="padding:2px 10px;color:#c7b377">' + (T '룬워드' 'Runeword') + '</td><td style="padding:2px 10px">' + (T '기타' 'Other') + '</td></tr>${[`' + (T '등록' 'Stashed') + '`,`' + (T '교체' 'Upgraded') + '`,`' + (T '보관' 'Kept') + '`,`' + (T '판매' 'Sold') + '`].map((l,i)=>`<tr><td style="padding:2px 10px;text-align:right;color:${[`#e8c060`,`#8cf`,`#fff`,`#999`][i]}">${l}</td>${(globalThis.__afkN[i]??[0,0,0,0]).map(v=>`<td style="padding:2px 10px">${v}</td>`).join(``)}</tr>`).join(``)}</table>`};u(),globalThis.__afkI=setInterval(u,1e3)};document.addEventListener(`keydown`,e=>{e.code===`F8`&&(e.preventDefault(),e.stopPropagation(),globalThis.__afkT())},!0);' + $game
 $game = Swap $game 'Ny(document,window,e=>{e||this.pause(),this.bankHidden()})' '(globalThis.__gm=this,Ny(document,window,e=>{e||globalThis.__afk||this.pause(),this.bankHidden()}))' 'afk no pause'
 $game = Swap $game 'showTierCleared(){let e=this.tierDone;if(!e)return this.toMenu();' 'showTierCleared(){let e=this.tierDone;if(!e)return this.toMenu();globalThis.__afkR=(globalThis.__afkR||0)+1,globalThis.__afkL=e.time,globalThis.__afkTot=(globalThis.__afkTot||0)+e.time;' 'afk run count'
-}
+} catch { if ("$_" -notlike 'D2SUNSUP*') { throw }; $game, $keepText, $uiText, $mainText, $langText, $header = $snap; $bad += 'afk' } }
 if ($O.auto) {
+$snap = @($game, $keepText, $uiText, $mainText, $langText, $header); try {
 $game = Swap $game 'visitAfterTier(){' 'visitAfterTier(){clearTimeout(this.__ar),__cdx();' 'auto repeat town'
 $game = Swap $game 'endAfterTier(){' 'endAfterTier(){clearTimeout(this.__ar),__cdx();' 'auto repeat end'
-}
+} catch { if ("$_" -notlike 'D2SUNSUP*') { throw }; $game, $keepText, $uiText, $mainText, $langText, $header = $snap; $bad += 'auto' } }
 
 $keepText = ReadFile $keepEntry
 # 미등록 표시는 2026.1026 업데이트부터 게임에 공식으로 들어가서 따로 고치지 않는다
 if ($O.pickup) {
+$snap = @($game, $keepText, $uiText, $mainText, $langText, $header); try {
 # 떨어진 아이템은 거리와 상관없이 즉시 처리한다 (원래는 몸에 닿아야 주움)
 # 미등록 유니크/세트는 거리·숨김·자동판매와 상관없이 바로 주워 등록한다
 # 그 밖의 아이템(등록된 유니크 포함)은 바로 판매한다. 퀘스트 아이템·부적은 인벤토리로
 $quest = (Find $keepText ('=(' + $id + ')\(t\)\?' + $id + '\(' + $id + '\(t\.name\),`red`\)') 'quest item').Groups[1].Value
 $reach = Find $keepText ('let t=n\.radius\+(' + $id + '),i=e\.reaching===r;if\(i&&c<t&&\(r\.dropped=!1\),r\.loot===`hide`&&!i\)continue;let a=r\.loot===`sell`&&!!e\.sell;') 'pickup radius'
 $keepText = Swap $keepText $reach.Value ('let __nw=e.isNew?.(r.item),t=1/0,i=e.reaching===r;if(i&&c<t&&(r.dropped=!1),r.loot===`hide`&&!i&&!__nw)continue;let a=!__nw&&(!' + $quest + '(r.item)||r.item.base===`hcx`)&&r.item.type!==`charm`&&!!e.sell;') 'pickup radius'
-}
+} catch { if ("$_" -notlike 'D2SUNSUP*') { throw }; $game, $keepText, $uiText, $mainText, $langText, $header = $snap; $bad += 'pickup' } }
 if ($O.goldchest) {
+$snap = @($game, $keepText, $uiText, $mainText, $langText, $header); try {
 # 골드도 거리와 상관없이 즉시 줍는다
 $gold = Find $keepText ('if\(!r\.magnet&&c<n\.pickupRadius&&\(r\.magnet=!0\),!r\.magnet\)continue;if\(c<n\.radius\+4\)\{a\+=(' + $id + ')\(e,r\);continue\}') 'gold'
 $keepText = Swap $keepText $gold.Value ('if(r.kind===`gold`){a+=' + $gold.Groups[1].Value + '(e,r);continue}' + $gold.Value) 'gold'
 # 상자도 거리와 상관없이 즉시 연다
 $chest = Find $keepText ('if\(r\.kind===`chest`\)\{if\(' + $id + '\(r\.x,r\.y,i,n\)>=n\.radius\+' + $id + '\)continue;') 'chest'
 $keepText = Swap $keepText $chest.Value 'if(r.kind===`chest`){' 'chest'
-}
+} catch { if ("$_" -notlike 'D2SUNSUP*') { throw }; $game, $keepText, $uiText, $mainText, $langText, $header = $snap; $bad += 'goldchest' } }
 
 # 시체 숨김: 시체 그림만 안 보이게 (시체 폭발 등 게임 판정은 그대로)
 if ($O.corpse) {
+$snap = @($game, $keepText, $uiText, $mainText, $langText, $header); try {
     $keepText = Swap $keepText 'e.layer.addChild(a);let o={anim:r,direction:i,time:0,dead:!1,floor:!0,sprite:a};return e.corpses.push(o),o}' 'e.layer.addChild(a),a.visible=!1;let o={anim:r,direction:i,time:0,dead:!1,floor:!0,sprite:a};return e.corpses.push(o),o}' 'corpse'
     $keepText = Swap $keepText 'e.layer.addChild(i),e.corpses.push({anim:r,direction:0,time:0,dead:!1,sprite:i})}' 'e.layer.addChild(i),i.visible=!1,e.corpses.push({anim:r,direction:0,time:0,dead:!1,sprite:i})}' 'corpse 2'
-}
+} catch { if ("$_" -notlike 'D2SUNSUP*') { throw }; $game, $keepText, $uiText, $mainText, $langText, $header = $snap; $bad += 'corpse' } }
 
 # 교체 창·목록용 헬퍼: 아이템 옵션 줄(한국어)과 부위/종류
 $tip = (Find $keepText ('function (' + $id + ')\(e,t,n=1,r,i=\{\},a\)\{if\(') 'tooltip').Groups[1].Value
@@ -593,6 +626,7 @@ $keepText += ";globalThis.__tip=e=>{try{return $tip(e).lines.map(l=>$tr(l.text))
 $langEntry = Entry 'lang'
 $langText = ReadFile $langEntry
 if ($O.font) {
+$snap = @($game, $keepText, $uiText, $mainText, $langText, $header); try {
     $keepText = Swap $keepText 'let t=e.charCodeAt(0);return t>=44032&&t<=55203' 'let t=e.charCodeAt(0);return t>32&&t!==160||t>=44032&&t<=55203' 'all glyphs foreign'
     $langText = Swap $langText '{unicodeRange:`U+1100-11FF, U+3130-318F, U+AC00-D7A3`}' '{}' 'font range'
     # 아이템 툴팁 글자만 4배 해상도로 그려 선명하게 (메뉴처럼 글자 이미지를 복사해 쓰는 곳은 그대로)
@@ -600,7 +634,7 @@ if ($O.font) {
     $keepText = Swap $keepText 'u.className=`d2-text`,u.textContent=e;' 'u.className=`d2-text`,u.textContent=e,u.__s=globalThis.__sharp;' 'sharp mark'
     $keepText = Swap $keepText 'f=()=>{let e=u.getContext(`2d`),t=e.createImageData(u.width,u.height);' 'f=()=>{if(u.__s&&!u.__k){let w=u.width,h=u.height;u.__k=4,u.width=w*4,u.height=h*4,u.style.width=w+`px`,u.style.height=h+`px`,u.style.imageRendering=`auto`}let e=u.getContext(`2d`);e.setTransform(1,0,0,1,0,0);let t=e.createImageData(u.width,u.height);' 'sharp ctx'
     $keepText = Swap $keepText 'e.putImageData(t,0,0);for(let{line:t,x:r,y:i}of d)o&&this.drawForeign' 'e.putImageData(t,0,0);e.setTransform(u.__k||1,0,0,u.__k||1,0,0);for(let{line:t,x:r,y:i}of d)o&&this.drawForeign' 'sharp draw'
-}
+} catch { if ("$_" -notlike 'D2SUNSUP*') { throw }; $game, $keepText, $uiText, $mainText, $langText, $header = $snap; $bad += 'font' } }
 # --- 고친 두 파일은 데이터 끝에 붙이고 헤더의 위치·크기·해시만 바꾼다 ---
 function Hex($b, $off, $len) {
     $h = [Security.Cryptography.SHA256]::Create().ComputeHash($b, $off, $len)
@@ -612,6 +646,9 @@ function NewEntry($e, $b, $offset) {
     '"{0}":{{"size":{1},"offset":"{2}","integrity":{{"algorithm":"SHA256","hash":"{3}","blockSize":{4},"blocks":[{5}]}}}}' -f `
         $e.Groups[1].Value, $b.Length, $offset, (Hex $b 0 $b.Length), $block, ($blocks -join ',')
 }
+
+# 안 되는 기능은 맨 위 줄 요약에 (불가)로 표시
+if ($bad.Count) { $old = $applied | ConvertTo-Json; foreach ($k in $bad) { $O[$k] = $false; $short[$k] += (T '(불가)' '(n/a)') }; $applied = MkApplied; $game = $game.Replace($old, ($applied | ConvertTo-Json)) }
 
 # 꺼 둔 표시 기능은 빈 함수로 바꿔 둔다
 if (-not $O.log) { $game += ';globalThis.__lg=()=>{};' }
@@ -632,10 +669,11 @@ $mm = [regex]::Matches($header, '"(main\.cjs)":\{"size":(\d+),"offset":"(\d+)","
 if ($mm.Count -ne 1) { Fail (T '이 게임 버전은 지원하지 않습니다 (main.cjs).' 'This game version is not supported (main.cjs).') }
 $mainText = ReadFile $mm[0]
 if ($O.afk) {
+$snap = @($game, $keepText, $uiText, $mainText, $langText, $header); try {
 $throttle = 'win\.on\("(minimize|hide)", throttle\(true\)\);'
 if ([regex]::Matches($mainText, $throttle).Count -ne 2) { Fail (T '이 게임 버전은 지원하지 않습니다 (throttle).' 'This game version is not supported (throttle).') }
 $mainText = [regex]::Replace($mainText, $throttle, '')
-}
+} catch { if ("$_" -notlike 'D2SUNSUP*') { throw }; $game, $keepText, $uiText, $mainText, $langText, $header = $snap; $bad += 'afk' } }
 # 패치된 게임은 순위표에 아무것도 보내지 않는다: 모든 POST를 보낸 것처럼(200) 처리하고 대기열에서 지운다 (조회 GET은 그대로)
 $mainText = Swap $mainText 'if (method === "POST" && (typeof body !== "string" || body.length > MAX_BODY3)) return { status: 413, body: null };' ('if (method === "POST" && (typeof body !== "string" || body.length > MAX_BODY3)) return { status: 413, body: null };' + "`n    " + 'if (method === "POST") return { status: 200, body: "{}", retryAfter: null };') 'no send'
 # 게임 안 업데이트 알림용: 이 패치 저장소의 파일만 인터넷 접근 허용 (게임은 원래 외부 접속을 모두 막음)
@@ -648,6 +686,7 @@ $header = $header.Replace($mm[0].Value, (NewEntry $mm[0] $mainBytes ($dataLen + 
 $fontBytes = New-Object byte[] 0
 $fontFile = Join-Path $__root 'kodia.ttf'
 if ($O.font) {
+$snap = @($game, $keepText, $uiText, $mainText, $langText, $header); try {
     $ttf = [IO.File]::ReadAllBytes($fontFile)
     $fontOut = New-Object IO.MemoryStream
     foreach ($fn in 'kodia', 'irisl') {
@@ -658,7 +697,9 @@ if ($O.font) {
         }
     }
     $fontBytes = $fontOut.ToArray()
-}
+} catch { if ("$_" -notlike 'D2SUNSUP*') { throw }; $game, $keepText, $uiText, $mainText, $langText, $header = $snap; $bad += 'font' } }
+
+} catch { if ("$_" -like 'D2SUNSUP*') { Fail ((T '이 게임 버전은 지원하지 않습니다. 필수 부분이 바뀌어 패치하지 않았습니다' 'This game version is not supported. A required part changed, nothing was patched') + " (" + "$_".Substring(9) + ')') } else { throw } }
 
 $json = $utf8.GetBytes($header)
 $payload = (4 + $json.Length + 3) -band -bnot 3
@@ -676,6 +717,7 @@ if (-not $fromBackup) { Copy-Item $asar $backup -Force }
 Write-Host (T '  [OK] 패치 완료. 게임을 실행하세요.' '  [OK] Patched. Start the game.') -ForegroundColor Green
 Write-Host "  $applied"
 # 알림에서 패치한 경우 게임을 다시 켠다 (explorer로 켜야 게임 로그가 이 창에 안 찍힘)
+if ($env:D2S_RELAUNCH -and $bad.Count) { [void](Msg ((T '이 게임 버전에서 안 되는 기능 (패치 수정 필요): ' 'Not working on this game version: ') + (($bad | ForEach-Object { $feat[$_] }) -join ', ')) 'Warning') }
 if ($env:D2S_RELAUNCH) { Start-Process explorer.exe ('"' + (Join-Path $GameDir 'D2 Survivors.exe') + '"') }
-elseif ($gui) { [void](Msg ((T "패치 완료 (v$Ver). 게임을 실행하세요." "Patched (v$Ver). Start the game.") + "`n`n" + ($applied -replace ' · ', "`n" -replace ' \| ', "`n"))) }
+elseif ($gui) { [void](Msg ((T "패치 완료 (v$Ver). 게임을 실행하세요." "Patched (v$Ver). Start the game.") + $(if ($bad.Count) { "`n`n" + (T '이 게임 버전에서 안 되는 기능 (패치 수정 필요): ' 'Not working on this game version: ') + (($bad | ForEach-Object { $feat[$_] }) -join ', ') } else { '' }) + "`n`n" + ($applied -replace ' · ', "`n" -replace ' \| ', "`n"))) }
 Done 0
