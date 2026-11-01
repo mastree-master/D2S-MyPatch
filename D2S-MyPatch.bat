@@ -31,7 +31,7 @@ if (-not (Test-Path $asar)) {
 $backup = "$asar.orig"
 
 # 업데이트 확인: GitHub의 version.txt가 더 크면 새 bat를 받아 자기 자신을 바꾸고 다시 실행
-$Ver = '1.02'
+$Ver = '1.03'
 $Repo = 'mastree-master/D2S-MyPatch'
 # raw.githubusercontent는 몇 분씩 예전 파일을 내주므로 캐시 없는 GitHub API로 받는다
 $raw = "https://api.github.com/repos/$Repo/contents"
@@ -53,7 +53,7 @@ if ($nv -gt [decimal]::Parse($Ver, $inv) -and $env:D2SF) {
         $wc.Headers['User-Agent'] = 'D2S-MyPatch'; $wc.Headers['Accept'] = 'application/vnd.github.raw'
         $nb = $wc.DownloadData("$raw/D2S-MyPatch.bat")
         $ns = [Text.Encoding]::UTF8.GetString($nb)
-        if (-not $ns.Contains('#PS' + 'START') -or -not ($ns -match "`$Ver = '([\d.]+)'" -and [decimal]::Parse($Matches[1], $inv) -gt [decimal]::Parse($Ver, $inv))) { Fail (T '받은 파일이 올바르지 않습니다.' 'Downloaded file is invalid.') }
+        if (-not $ns.Contains('#PS' + 'START') -or -not ($ns -match '\$Ver = ''([\d.]+)''' -and [decimal]::Parse($Matches[1], $inv) -gt [decimal]::Parse($Ver, $inv))) { Fail (T '받은 파일이 올바르지 않습니다.' 'Downloaded file is invalid.') }
         [IO.File]::WriteAllBytes($env:D2SF, $nb)
         Write-Host (T '  업데이트 완료. 새 버전으로 다시 실행합니다.' '  Updated. Restarting with new version.') -ForegroundColor Green
         & ([scriptblock]::Create($ns.Substring($ns.IndexOf('#PS' + 'START')))) -Lang $Lang -Action $Action -GameDir $GameDir
@@ -97,17 +97,17 @@ $feat = [ordered]@{
     swpop = T '교체 시 바뀐 옵션 창' 'Upgrade change popup'
     twins = T '툴팁 옆 같은 아이템 위치 · 비교' 'Twin compare boxes'
     hidden = T '툴팁에 숨겨진 값 표시' 'Show hidden stats'
-    auto = T '포털 자동 입장 · 같은 단계 자동 재시작' 'Auto portal · auto replay'
+    auto = T '포털 자동 입장 · 클리어 후 자동 진행' 'Auto portal · auto continue'
     nopause = T '캐릭터/인벤/스킬 창 열어도 안 멈춤' 'Panels do not pause'
     stash = T 'B 창고 열기 · Ctrl+클릭 창고로' 'B stash · Ctrl+click to stash'
     afk = T 'AFK 모드 (F8) · 최소화해도 안 멈춤' 'AFK mode (F8) · no minimize throttle'
-    speed = T '배속 (F7)' 'Game speed (F7)'
+    speed = T '배속 (F7: 1 → 1.5 → 2 → 3배, 화면 위에 표시)' 'Game speed (F7: 1 → 1.5 → 2 → 3x, shown on top)'
     bright = T '밝기 · 명암 (PageUp/PageDown, Home/End)' 'Brightness · contrast (PageUp/PageDown, Home/End)'
     corpse = T '시체 숨김' 'Hide corpses'
     fps = T 'FPS 표시 (F9)' 'Show FPS (F9)'
     font = T '폰트 교체 (kodia.ttf 있을 때)' 'Font replace (needs kodia.ttf)'
 }
-$O = @{ delay = 4; brightness = 100; contrast = 100; logn = 15; res = 0; fpscap = 0 }
+$O = @{ automode = 'same'; delay = 4; brightness = 100; contrast = 100; logn = 15; res = 0; fpscap = 0 }
 foreach ($k in $feat.Keys) { $O[$k] = $true }
 try { (Get-Content $optFile -Raw -Encoding UTF8 | ConvertFrom-Json).PSObject.Properties | ForEach-Object { $O[$_.Name] = $_.Value } } catch {}
 $hasFont = Test-Path (Join-Path $__root 'kodia.ttf')
@@ -135,6 +135,12 @@ if (-not $Action) {
         $n = New-Object Windows.Forms.NumericUpDown; $n.Minimum = $min; $n.Maximum = $max; $n.Increment = $step; $n.Value = [Math]::Min($max, [Math]::Max($min, [decimal]$v)); $n.Width = 70
         $r.Controls.Add($l); $r.Controls.Add($n); $p.Controls.Add($r); $n
     }
+    $mr = New-Object Windows.Forms.FlowLayoutPanel; $mr.AutoSize = $true; $mr.WrapContents = $false
+    $ml = New-Object Windows.Forms.Label; $ml.Text = T '클리어 후 자동 진행' 'After clear'; $ml.AutoSize = $true; $ml.Padding = '0,6,0,0'
+    $cMode = New-Object Windows.Forms.ComboBox; $cMode.DropDownStyle = 'DropDownList'; $cMode.Width = 200
+    [void]$cMode.Items.AddRange(@((T '같은 단계 계속 반복' 'Repeat same tier'), (T '한 단계씩 올라가기' 'Go up one tier')))
+    $cMode.SelectedIndex = [int]($O.automode -eq 'next')
+    $mr.Controls.Add($ml); $mr.Controls.Add($cMode); $p.Controls.Add($mr)
     $nDelay = Num (T '자동 진행 대기 (초)' 'Auto delay (s)') $O.delay 1 30 1
     $nBright = Num (T '기본 밝기 (%)' 'Default brightness (%)') $O.brightness 50 200 5
     $nLog = Num (T '획득 목록 줄 수' 'Pickup log lines') $O.logn 5 40 1
@@ -151,7 +157,7 @@ if (-not $Action) {
     if ($res -eq 'Yes') {
         $Action = 'patch'
         foreach ($k in $feat.Keys) { $O[$k] = $cb[$k].Checked }
-        $O.delay = [int]$nDelay.Value; $O.brightness = [int]$nBright.Value; $O.logn = [int]$nLog.Value
+        $O.automode = @('same', 'next')[$cMode.SelectedIndex]; $O.delay = [int]$nDelay.Value; $O.brightness = [int]$nBright.Value; $O.logn = [int]$nLog.Value
         $O.contrast = [int]$nContrast.Value; $O.res = [int]$nRes.Value; $O.fpscap = [int]$nCap.Value
         New-Item -ItemType Directory -Force (Split-Path $optFile) | Out-Null
         $O | ConvertTo-Json | Set-Content $optFile -Encoding UTF8
@@ -274,7 +280,7 @@ $game = Swap $game '(e.code===`KeyC`||e.code===`KeyI`)&&this.state===`playing`?t
 }
 if ($O.auto) {
 # 공포 단계 클리어 화면에서 4초 뒤 자동 진행: 다시 하기(replay) 단계면 같은 단계 재시작, 아니면 Enter와 같은 동작. 상점·종료로 나가면 취소
-$game = Swap $game 'showTierCleared(){let e=this.tierDone;if(!e)return this.toMenu();' ('showTierCleared(){let e=this.tierDone;if(!e)return this.toMenu();clearTimeout(this.__ar),__cd(' + $O.delay + ',e.replay?`' + (T '#초 뒤 같은 단계 재시작' 'Restarting in #s') + '`:`' + (T '#초 뒤 다음 단계' 'Next tier in #s') + '`),this.__ar=setTimeout(()=>{this.tierDone===e&&(e.replay?(this.tierDone=null,this.startReplay(this.kit,e.tier)):this.nextTier())},' + $O.delay + 'e3);') 'auto repeat'
+$game = Swap $game 'showTierCleared(){let e=this.tierDone;if(!e)return this.toMenu();' ('showTierCleared(){let e=this.tierDone;if(!e)return this.toMenu();clearTimeout(this.__ar),__cd(' + $O.delay + ',`' + $(if ($O.automode -eq 'next') { T '#초 뒤 다음 단계' 'Next tier in #s' } else { T '#초 뒤 같은 단계 재시작' 'Restarting in #s' }) + '`),this.__ar=setTimeout(()=>{this.tierDone===e&&(' + $(if ($O.automode -eq 'next') { 'e.replay?(this.tierDone=null,this.startReplay(this.kit,e.tier+1)):this.nextTier()' } else { 'this.tierDone=null,this.startReplay(this.kit,e.tier)' }) + ')},' + $O.delay + 'e3);') 'auto repeat'
 # 공포 단계 보스 처치 후 포털이 열리면 4초 뒤 자동 입장 (클리어 화면으로)
 $portal = Find $game ('this\.hud\.banner\(`A portal to \$\{' + $id + '\(t,' + $id + '\)\} has opened`\),!1\}') 'portal'
 $game = Swap $game $portal.Value ($portal.Value.Substring(0, $portal.Value.Length - 3) + 't.terror&&(__cd(' + $O.delay + ',`' + (T '#초 뒤 포털 입장' 'Entering portal in #s') + '`)),!1}') 'portal'
