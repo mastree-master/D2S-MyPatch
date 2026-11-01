@@ -629,7 +629,7 @@ if (-not $Action) {
 }
 if (-not $hasFont) { $O.font = $false }
 $on = $feat.Keys | Where-Object { $O[$_] } | ForEach-Object { $feat[$_] }
-$beep = 'globalThis.__beep=t=>{try{let a=globalThis.__ac??=new AudioContext,n=a.currentTime;([[784,1047,1568],[659,880],[523,392,262]][t]??[880]).forEach((f,i)=>{let o=a.createOscillator(),v=a.createGain(),q=n+i*.13;o.type=`triangle`,o.frequency.value=f,v.gain.setValueAtTime(0,q),v.gain.linearRampToValueAtTime(.3,q+.01),v.gain.exponentialRampToValueAtTime(.001,q+.4),o.connect(v).connect(a.destination),o.start(q),o.stop(q+.45)})}catch{}};'
+$beep = 'globalThis.__beep=t=>{try{let a=globalThis.__ac??=new AudioContext,n=a.currentTime;([[1047,1568],[880],[523,392]][t]??[880]).forEach((f,i)=>{let o=a.createOscillator(),v=a.createGain(),q=n+i*.13;o.type=`triangle`,o.frequency.value=f,v.gain.setValueAtTime(0,q),v.gain.linearRampToValueAtTime(.1,q+.01),v.gain.exponentialRampToValueAtTime(.001,q+.4),o.connect(v).connect(a.destination),o.start(q),o.stop(q+.45)})}catch{}};'
 $short = [ordered]@{ carry = T '자동등록' 'stash'; pickup = T '즉시습득' 'pickup'; goldchest = T '골드상자' 'gold'; overflow = T '꽉차면창고' 'overflow'; skillcharm = T '스킬부적창고' 'skillcharm'; log = T '획득목록' 'log'; swpop = T '교체창' 'swap'; twins = T '비교상자' 'compare'; hidden = T '숨은값' 'hidden'; auto = T '자동진행' 'auto'; nopause = T '창안멈춤' 'nopause'; stash = T 'B창고' 'Bstash'; afk = 'AFK'; speed = T '배속' 'speed'; bright = T '밝기명암' 'bright'; hud = T 'HUD배치' 'hud'; corpse = T '시체숨김' 'corpse'; fps = 'FPS'; dropsnd = T '드롭소리' 'dropsound'; shard = T '파편안내' 'shard'; stats = T '통계' 'stats'; font = T '폰트' 'font' }
 function MkApplied { (($short.Keys | ForEach-Object { $(if ($O[$_]) { [char]0x2713 } else { [char]0x2717 }) + $short[$_] }) -join ' · ') + ' | ' + $(if ($O.auto) { $(if ($O.automode -eq 'next') { T '다음 단계' 'next tier' } else { T '같은 단계' 'same tier' }) + " $($O.delay)" + (T '초' 's') + ' · ' } else { '' }) + (T '해상도 ' 'res ') + $(if ([int]$O.res -gt 0) { "$($O.res)%" } else { T '자동' 'auto' }) + ' · ' + (T 'FPS 제한 ' 'FPS cap ') + $(if ([int]$O.fpscap -gt 0) { $O.fpscap } else { T '없음' 'none' }) }
 $applied = MkApplied
@@ -790,8 +790,8 @@ $game = 'globalThis.__br=' + ([decimal]$O.brightness / 100).ToString($inv) + ';g
 # FPS 표시 (F9로 켜고 끔): 오른쪽 위
 if ($O.dropsnd) {
 $snap = @($game, $keepText, $uiText, $mainText, $langText, $header); try {
-# F2에서 인벤(1) · 창고(3)로 정한 아이템을 주우면 소리 (창고: 높은 3음, 인벤: 2음), 0.4초 안에 겹치면 한 번만
-$game = '' + $beep + 'globalThis.__dsnd=e=>{let v=globalThis.__ksv?.(e),n=performance.now();(v===1||v===3)&&n-(globalThis.__dsT||0)>400&&(globalThis.__dsT=n,globalThis.__beep(v===3?0:1))};' + $game
+# F2에서 인벤(1) · 창고(3)로 정한 아이템을 주우면 소리 (창고: 높은 3음, 인벤: 2음), 3초 안에 겹치면 한 번만
+$game = '' + $beep + 'globalThis.__dsnd=e=>{let v=globalThis.__ksv?.(e),n=performance.now();(v===1||v===3)&&n-(globalThis.__dsT||0)>3e3&&(globalThis.__dsT=n,globalThis.__beep(v===3?0:1))};' + $game
 } catch { if ("$_" -notlike 'D2SUNSUP*') { throw }; $game, $keepText, $uiText, $mainText, $langText, $header = $snap; $bad += 'dropsnd' } }
 if ($O.stats) {
 $snap = @($game, $keepText, $uiText, $mainText, $langText, $header); try {
