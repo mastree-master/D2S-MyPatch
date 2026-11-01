@@ -11,7 +11,7 @@ param([string]$Lang, [string]$Action, [string]$GameDir)
 $ErrorActionPreference = 'Stop'
 try { [Console]::OutputEncoding = [Text.Encoding]::UTF8 } catch {}
 
-if (-not $Lang) { $Lang = if ((Get-UICulture).Name -like 'ko*') { 'ko' } else { 'en' } }
+if (-not $Lang) { $Lang = if (@((Get-UICulture).Name, [Globalization.CultureInfo]::InstalledUICulture.Name, (Get-Culture).Name) -like 'ko*') { 'ko' } else { 'en' } }
 $ko = $Lang -ne 'en'
 function T($k, $e) { if ($ko) { $k } else { $e } }
 # bat를 더블클릭해 실행한 경우: cmd 창을 숨기고 모든 안내를 창(GUI)으로. 끝나면 숨긴 cmd도 닫는다
@@ -56,7 +56,7 @@ if (-not (Test-Path $asar)) {
 $backup = "$asar.orig"
 
 # 업데이트 확인: GitHub의 version.txt가 더 크면 새 bat를 받아 자기 자신을 바꾸고 다시 실행
-$Ver = '1.57'
+$Ver = '1.58'
 $Repo = 'mastree-master/D2S-MyPatch'
 # raw.githubusercontent는 몇 분씩 예전 파일을 내주므로 캐시 없는 GitHub API로 받는다
 $raw = "https://api.github.com/repos/$Repo/contents"
@@ -146,6 +146,12 @@ $pv = if ($game -match 'globalThis\.__d2sv=([\d.]+);') { $Matches[1] } else { ''
 
 # 패치 기록 (선택 창 오른쪽에 표시). 새 버전은 맨 위에 추가
 $changelog = @'
+1.58
+- 패치 창을 디아블로풍으로: 게임 메뉴 그림 배너 · 금색 제목, 어두운 배경, 게임 돌 버튼, 탭 · 표 · 입력칸 어두운 색 (게임 그림이 없으면 색만)
+- 기능 탭 스크롤 없이 한 화면: 기능은 2열 상자, 조절값은 2열 상자, 긴 이름 줄임
+- 보관 설정 탭: 맨 앞 선택 칸, 전체 선택 / 전체 해제(보이는 줄), "체크한 줄을 [인벤 · 판매 · 창고] (으)로 적용", 구분 · 검색 · 설정 필터(인벤만 · 판매만 · 창고만)
+- 패치 창 언어 판별을 여러 값으로 (가끔 영어로 뜨던 문제)
+
 1.57
 - 보관 설정: 옵션을 게임 옵션표의 옵션 하나하나로 나눔 (직업별 스킬 · 스킬 트리별 · 모든/화염/냉기/번개/독 저항 · 피해 종류별 · 속도별 · 능력치별 …), 이름은 게임 문구 그대로, 그 부위에 안 붙는 옵션은 없앰
 - 모든 저항은 네 저항이 같이 붙은 공통값으로 따로 판정 (예: 작은 부적 모든 저항 3~5, 개별 저항 3~11)
@@ -400,34 +406,43 @@ $KeepTab = { param($page)
     $q = New-Object Windows.Forms.TextBox; $q.Width = 160
     $miss = New-Object Windows.Forms.CheckBox; $miss.Text = T '미등록만' 'Missing only'; $miss.AutoSize = $true
     $bv = New-Object Windows.Forms.ComboBox; $bv.DropDownStyle = 'DropDownList'; $bv.Width = 70; [void]$bv.Items.AddRange(@($names[1], $names[2], $names[3])); $bv.SelectedIndex = 0
-    $bb = New-Object Windows.Forms.Button; $bb.Text = T '보이는 줄 전부 바꾸기' 'Set all shown'; $bb.AutoSize = $true
+    $vf = New-Object Windows.Forms.ComboBox; $vf.DropDownStyle = 'DropDownList'; $vf.Width = 100; [void]$vf.Items.AddRange(@((T '전체 설정' 'Any action'), ($names[1] + (T '만' ' only')), ($names[2] + (T '만' ' only')), ($names[3] + (T '만' ' only')))); $vf.SelectedIndex = 0
+    $lc = New-Object Windows.Forms.Label; $lc.Text = T '구분' 'Type'; $lc.AutoSize = $true; $lc.Padding = '0,6,0,0'
+    $lf = New-Object Windows.Forms.Label; $lf.Text = T '   설정' '   Action'; $lf.AutoSize = $true; $lf.Padding = '0,6,0,0'
+    $bAll = New-Object Windows.Forms.Button; $bAll.Text = T '전체 선택' 'Select all'; $bAll.AutoSize = $true
+    $bNone = New-Object Windows.Forms.Button; $bNone.Text = T '전체 해제' 'Clear'; $bNone.AutoSize = $true
+    $lb1 = New-Object Windows.Forms.Label; $lb1.Text = T '   체크한 줄을' '   Set checked rows to'; $lb1.AutoSize = $true; $lb1.Padding = '0,6,0,0'
+    $bb = New-Object Windows.Forms.Button; $bb.Text = T '(으)로 적용' 'Apply'; $bb.AutoSize = $true
     $lq = New-Object Windows.Forms.Label; $lq.Text = T '검색' 'Search'; $lq.AutoSize = $true; $lq.Padding = '0,6,0,0'
     $sum = New-Object Windows.Forms.Label; $sum.AutoSize = $true; $sum.Padding = '8,6,0,0'; $sum.ForeColor = 'DarkBlue'
-    $top.Controls.AddRange(@($cat, $lq, $q, $miss, $bv, $bb, $sum))
+    $top.Controls.AddRange(@($lc, $cat, $lq, $q, $miss, $lf, $vf, $sum, $bAll, $bNone, $lb1, $bv, $bb)); $top.SetFlowBreak($sum, $true)
     $g = New-Object Windows.Forms.DataGridView; $g.Dock = 'Fill'; $g.AllowUserToAddRows = $false; $g.AllowUserToDeleteRows = $false; $g.RowHeadersVisible = $false; $g.SelectionMode = 'CellSelect'; $g.EditMode = 'EditOnEnter'; $g.BackgroundColor = 'White'
-    foreach ($c in @(@('c', (T '분류' 'Type'), 70), @('n', (T '이름' 'Name'), 190), @('b', (T '부위 · 옵션' 'Slot · stat'), 260))) { $col = New-Object Windows.Forms.DataGridViewTextBoxColumn; $col.Name = $c[0]; $col.HeaderText = $c[1]; $col.Width = $c[2]; $col.ReadOnly = $true; [void]$g.Columns.Add($col) }
+    $cs = New-Object Windows.Forms.DataGridViewCheckBoxColumn; $cs.Name = 'sel'; $cs.HeaderText = T '선택' 'Pick'; $cs.Width = 50; [void]$g.Columns.Add($cs)
+    foreach ($c in @(@('c', (T '구분' 'Type'), 70), @('n', (T '이름' 'Name'), 190), @('b', (T '부위 · 옵션' 'Slot · stat'), 260))) { $col = New-Object Windows.Forms.DataGridViewTextBoxColumn; $col.Name = $c[0]; $col.HeaderText = $c[1]; $col.Width = $c[2]; $col.ReadOnly = $true; [void]$g.Columns.Add($col) }
     $cv = New-Object Windows.Forms.DataGridViewComboBoxColumn; $cv.Name = 'v'; $cv.HeaderText = T '설정' 'Action'; $cv.Width = 70; [void]$cv.Items.AddRange(@($names[1], $names[2], $names[3])); $cv.FlatStyle = 'Flat'; [void]$g.Columns.Add($cv)
     $cm = New-Object Windows.Forms.DataGridViewTextBoxColumn; $cm.Name = 'm'; $cm.HeaderText = T '최소 수치 (이상 적용)' 'Min (or more)'; $cm.Width = 150; [void]$g.Columns.Add($cm)
     foreach ($r in $meta.rows) {
         $v = if ($r.o) { 0 } elseif ($ks.ContainsKey($r.k)) { [int]$ks[$r.k] } else { [int]$r.d }
-        $i = $g.Rows.Add($r.c, ($r.n + $(if ($r.x) { T '  (미등록)' '  (missing)' } else { '' })), $r.b, $names[$v], $(if ($r.m -and $ks.ContainsKey($r.k + '#')) { [string]$ks[$r.k + '#'] } else { '' }))
-        $row = $g.Rows[$i]; $row.Tag = $r; if ($r.o) { $row.Cells['v'].ReadOnly = $true; $row.Cells['v'].Style.BackColor = 'WhiteSmoke'; $row.DefaultCellStyle.ForeColor = 'DimGray' }; if (-not $r.m) { $row.Cells['m'].ReadOnly = $true; $row.Cells['m'].Style.BackColor = 'WhiteSmoke' }
-        if ($v) { $row.Cells['v'].Style.ForeColor = @{ 1 = 'Black'; 2 = 'Firebrick'; 3 = 'RoyalBlue' }[$v] }
+        $i = $g.Rows.Add($false, $r.c, ($r.n + $(if ($r.x) { T '  (미등록)' '  (missing)' } else { '' })), $r.b, $names[$v], $(if ($r.m -and $ks.ContainsKey($r.k + '#')) { [string]$ks[$r.k + '#'] } else { '' }))
+        $row = $g.Rows[$i]; $row.Tag = $r; if ($r.o) { $row.Cells['sel'].ReadOnly = $true; $row.Cells['v'].ReadOnly = $true; $row.Cells['v'].Style.BackColor = [Drawing.Color]::FromArgb(24, 19, 14); $row.DefaultCellStyle.ForeColor = 'Gray' }; if (-not $r.m) { $row.Cells['m'].ReadOnly = $true; $row.Cells['m'].Style.BackColor = [Drawing.Color]::FromArgb(24, 19, 14) }
+        if ($v) { $row.Cells['v'].Style.ForeColor = @{ 1 = 'WhiteSmoke'; 2 = 'Salmon'; 3 = 'LightSkyBlue' }[$v] }
     }
     $save = { $o = @{ t = [long]([DateTimeOffset]::Now.ToUnixTimeMilliseconds()); ks = $ks }; [IO.Directory]::CreateDirectory($dir) | Out-Null; [IO.File]::WriteAllText($kf, ($o | ConvertTo-Json -Depth 3 -Compress), (New-Object Text.UTF8Encoding($false))) }
     $set = { param($row)
-        $r = $row.Tag; $v = $vals[[string]$row.Cells['v'].Value]; if ($v) { $ks[$r.k] = $v; $row.Cells['v'].Style.ForeColor = @{ 1 = 'Black'; 2 = 'Firebrick'; 3 = 'RoyalBlue' }[$v] }
+        $r = $row.Tag; $v = $vals[[string]$row.Cells['v'].Value]; if ($v) { $ks[$r.k] = $v; $row.Cells['v'].Style.ForeColor = @{ 1 = 'WhiteSmoke'; 2 = 'Salmon'; 3 = 'LightSkyBlue' }[$v] }
         if ($r.m) { $n = 0; if ([int]::TryParse([string]$row.Cells['m'].Value, [ref]$n) -and $n -gt 0) { $ks[$r.k + '#'] = $n } else { $ks.Remove($r.k + '#'); $row.Cells['m'].Value = '' } }
     }
-    $g.Add_CurrentCellDirtyStateChanged({ if ($g.IsCurrentCellDirty -and $g.CurrentCell.OwningColumn.Name -eq 'v') { $g.CommitEdit('CurrentCellChange') | Out-Null } })
-    $g.Add_CellValueChanged({ param($s, $e) if ($e.RowIndex -ge 0) { & $set $g.Rows[$e.RowIndex]; & $save; & $count } })
-    $filter = { $c = $cat.SelectedIndex; $t = $q.Text -replace '\s', ''; foreach ($row in $g.Rows) { $r = $row.Tag; $row.Visible = ($c -eq 0 -or $r.c -eq $cat.SelectedItem) -and (-not $t -or (($r.n + $r.b + $r.k) -replace '\s', '').IndexOf($t, [StringComparison]::OrdinalIgnoreCase) -ge 0) -and (-not $miss.Checked -or $r.x) } }
+    $g.Add_CurrentCellDirtyStateChanged({ if ($g.IsCurrentCellDirty -and $g.CurrentCell.OwningColumn.Name -match '^(v|sel)$') { $g.CommitEdit('CurrentCellChange') | Out-Null } })
+    $g.Add_CellValueChanged({ param($s, $e) if ($e.RowIndex -ge 0 -and $g.Columns[$e.ColumnIndex].Name -ne 'sel') { & $set $g.Rows[$e.RowIndex]; & $save; & $count } })
+    $filter = { $c = $cat.SelectedIndex; $t = $q.Text -replace '\s', ''; foreach ($row in $g.Rows) { $r = $row.Tag; $row.Visible = ($c -eq 0 -or $r.c -eq $cat.SelectedItem) -and (-not $t -or (($r.n + $r.b + $r.k) -replace '\s', '').IndexOf($t, [StringComparison]::OrdinalIgnoreCase) -ge 0) -and (-not $miss.Checked -or $r.x) -and ($vf.SelectedIndex -eq 0 -or (-not $r.o -and $vals[[string]$row.Cells['v'].Value] -eq $vf.SelectedIndex)) } }
     $count = { $c = @{ 1 = 0; 2 = 0; 3 = 0 }; $n = 0; foreach ($row in $g.Rows) { if ($row.Visible -and -not $row.Tag.o) { $n++; $c[$vals[[string]$row.Cells['v'].Value]]++ } }; $m = @(1, 3, 2 | Where-Object { $c[$_] }); $sum.Text = if ($m.Count -eq 1) { (T '전부 ' 'all ') + $names[$m[0]] } else { ($m | ForEach-Object { $names[$_] + ' ' + $c[$_] }) -join ' · ' } }
     $filter = [scriptblock]::Create($filter.ToString() + '; & $count')
-    $cat.Add_SelectedIndexChanged($filter); $q.Add_TextChanged($filter); $miss.Add_CheckedChanged($filter)
+    $cat.Add_SelectedIndexChanged($filter); $q.Add_TextChanged($filter); $miss.Add_CheckedChanged($filter); $vf.Add_SelectedIndexChanged($filter)
+    $bAll.Add_Click({ foreach ($row in $g.Rows) { if ($row.Visible -and -not $row.Tag.o) { $row.Cells['sel'].Value = $true } } })
+    $bNone.Add_Click({ foreach ($row in $g.Rows) { $row.Cells['sel'].Value = $false } })
     $bb.Add_Click({
-        $shown = @($g.Rows | Where-Object { $_.Visible -and -not $_.Tag.o }); if (-not $shown.Count) { return }
-        if ((Msg ((T '보이는 ' 'Set ') + $shown.Count + (T '줄을 전부 "' ' rows to "') + $bv.SelectedItem + (T '"(으)로 바꿀까요?' '"?')) 'Question' 'YesNo') -ne 'Yes') { return }
+        $g.EndEdit() | Out-Null; $shown = @($g.Rows | Where-Object { $_.Cells['sel'].Value -eq $true -and -not $_.Tag.o }); if (-not $shown.Count) { [void](Msg (T '체크한 줄이 없습니다.' 'No rows checked.')); return }
+        if ((Msg ((T '체크한 ' 'Set ') + $shown.Count + (T '줄을 "' ' rows to "') + $bv.SelectedItem + (T '"(으)로 바꿀까요?' '"?')) 'Question' 'YesNo') -ne 'Yes') { return }
         foreach ($row in $shown) { $row.Cells['v'].Value = $bv.SelectedItem; & $set $row }; & $save; & $count
     })
     $page.Controls.Add($g); $page.Controls.Add($top); & $count
@@ -443,29 +458,36 @@ if (-not $Action) {
     $st = New-Object Windows.Forms.Label; $st.AutoSize = $true; $st.ForeColor = 'DarkBlue'
     $st.Text = if (-not $patched) { T '현재: 원본' 'Current: original' } elseif ($pv -eq $Ver) { T "현재: 패치 v$pv" "Current: patched v$pv" } else { T "현재: 예전 패치 ($pv) → 새 버전 v$Ver 로 덮어쓰기 가능" "Current: older patch ($pv) → can re-patch v$Ver" }
     $p.Controls.Add($st)
+    function Box($title, $h) {
+        $gb = New-Object Windows.Forms.GroupBox; $gb.Text = $title; $gb.AutoSize = $true; $gb.AutoSizeMode = 'GrowAndShrink'; $gb.Padding = '8,6,8,6'; $gb.Margin = '0,6,0,0'
+        $fl = New-Object Windows.Forms.FlowLayoutPanel; $fl.FlowDirection = 'TopDown'; $fl.WrapContents = $true; $fl.AutoSize = $true; $fl.Location = New-Object Drawing.Point(8, 24); $fl.MaximumSize = New-Object Drawing.Size(0, $h)
+        $gb.Controls.Add($fl); $p.Controls.Add($gb); $fl
+    }
+    $cbp = Box (T '기능' 'Features') 300
     $cb = @{}
     foreach ($k in $feat.Keys) {
         $c = New-Object Windows.Forms.CheckBox; $c.Text = $feat[$k]; $c.AutoSize = $true; $c.Checked = [bool]$O[$k]
         if ($k -eq 'font' -and -not $hasFont) { $c.Checked = $false; $c.Enabled = $false }
-        $cb[$k] = $c; $p.Controls.Add($c)
+        $c.Margin = '3,2,16,2'; $cb[$k] = $c; $cbp.Controls.Add($c)
     }
     function Num($label, $v, $min, $max, $step) {
         $r = New-Object Windows.Forms.FlowLayoutPanel; $r.AutoSize = $true; $r.WrapContents = $false
         $l = New-Object Windows.Forms.Label; $l.Text = $label; $l.AutoSize = $true; $l.Padding = '0,6,0,0'
         $n = New-Object Windows.Forms.NumericUpDown; $n.Minimum = $min; $n.Maximum = $max; $n.Increment = $step; $n.Value = [Math]::Min($max, [Math]::Max($min, [decimal]$v)); $n.Width = 70
-        $r.Controls.Add($l); $r.Controls.Add($n); $p.Controls.Add($r); $n
+        $r.Controls.Add($l); $r.Controls.Add($n); $r.Margin = '3,0,16,0'; $np.Controls.Add($r); $n
     }
-    $mr = New-Object Windows.Forms.FlowLayoutPanel; $mr.AutoSize = $true; $mr.WrapContents = $false
+    $np = Box (T '조절값' 'Settings') 175
+    $mr = New-Object Windows.Forms.FlowLayoutPanel; $mr.AutoSize = $true; $mr.WrapContents = $false; $mr.Margin = '3,0,16,0'
     $ml = New-Object Windows.Forms.Label; $ml.Text = T '클리어 후 자동 진행' 'After clear'; $ml.AutoSize = $true; $ml.Padding = '0,6,0,0'
     $cMode = New-Object Windows.Forms.ComboBox; $cMode.DropDownStyle = 'DropDownList'; $cMode.Width = 200
     [void]$cMode.Items.AddRange(@((T '같은 단계 계속 반복' 'Repeat same tier'), (T '한 단계씩 올라가기' 'Go up one tier')))
     $cMode.SelectedIndex = [int]($O.automode -eq 'next')
-    $mr.Controls.Add($ml); $mr.Controls.Add($cMode); $p.Controls.Add($mr)
+    $mr.Controls.Add($ml); $mr.Controls.Add($cMode); $np.Controls.Add($mr)
     $nDelay = Num (T '자동 진행 대기 (초)' 'Auto delay (s)') $O.delay 1 30 1
     $nBright = Num (T '기본 밝기 (%)' 'Default brightness (%)') $O.brightness 50 200 5
-    $nLog = Num (T '획득 목록 처음 높이 (줄 수, 창은 게임에서 끌어서 조절)' 'Pickup log initial height (lines, resize in game)') $O.logn 5 40 1
-    $nLogSize = Num (T '획득 목록 글자 크기 (px, 0 = 화면에 맞춤)' 'Pickup log font (px, 0 = auto)') $O.logsize 0 30 1
-    $nLogW = Num (T '획득 목록 최대 폭 (화면 %)' 'Pickup log max width (% of screen)') $O.logw 10 70 2
+    $nLog = Num (T '획득 목록 처음 높이 (줄)' 'Pickup log height (lines)') $O.logn 5 40 1
+    $nLogSize = Num (T '획득 목록 글자 (px, 0 = 자동)' 'Pickup log font (px, 0 = auto)') $O.logsize 0 30 1
+    $nLogW = Num (T '획득 목록 폭 (화면 %)' 'Pickup log width (%)') $O.logw 10 70 2
     $nContrast = Num (T '기본 명암 (%)' 'Default contrast (%)') $O.contrast 50 200 5
     $nRes = Num (T '렌더링 해상도 (%, 0 = 자동)' 'Render resolution (%, 0 = auto)') $O.res 0 200 25
     $nCap = Num (T 'FPS 제한 (0 = 제한 없음)' 'FPS cap (0 = none)') $O.fpscap 0 240 10
@@ -478,12 +500,57 @@ if (-not $Action) {
     $lg = New-Object Windows.Forms.TextBox; $lg.Multiline = $true; $lg.ReadOnly = $true; $lg.ScrollBars = 'Vertical'; $lg.BackColor = 'White'
     $lg.Text = (T '패치 기록' 'Patch log') + "`r`n`r`n" + ($changelog -replace "`r?`n", "`r`n"); $lg.Margin = '16,0,0,0'
     $row.Controls.Add($p); $row.Controls.Add($lg)
+    foreach ($x in @($cbp, $np)) { $x.PerformLayout(); $x.Size = $x.PreferredSize; $x.Parent.PerformLayout() }; $p.PerformLayout()
     $lg.Size = New-Object Drawing.Size(360, $p.PreferredSize.Height)
-    $tc = New-Object Windows.Forms.TabControl; $t1 = New-Object Windows.Forms.TabPage; $t1.Text = T '기능' 'Features'; $t1.Controls.Add($row); $t1.Padding = 8; $t1.AutoScroll = $true
-    $t2 = New-Object Windows.Forms.TabPage; $t2.Text = T '보관 설정 (F2)' 'Keep settings (F2)'; $t2.Padding = 8
-    $tc.TabPages.AddRange(@($t1, $t2)); $tc.Size = New-Object Drawing.Size(($row.PreferredSize.Width + 40), ($row.PreferredSize.Height + 60))
+    $tc = New-Object Windows.Forms.Panel; $tc.Size = New-Object Drawing.Size(($row.PreferredSize.Width + 70), ($row.PreferredSize.Height + 70))
+    $t1 = New-Object Windows.Forms.Panel; $t1.Controls.Add($row); $t1.Padding = 8; $t2 = New-Object Windows.Forms.Panel; $t2.Padding = 8; $t2.Visible = $false
+    $tabs = New-Object Windows.Forms.FlowLayoutPanel; $tabs.Dock = 'Top'; $tabs.Height = 36; $tabs.WrapContents = $false
+    foreach ($x in @($t1, $t2)) { $x.Dock = 'Fill'; $x.BorderStyle = 'FixedSingle' }
+    $tb1 = New-Object Windows.Forms.Button; $tb1.Text = T '기능' 'Features'; $tb2 = New-Object Windows.Forms.Button; $tb2.Text = T '보관 설정 (F2)' 'Keep settings (F2)'
+    foreach ($x in @($tb1, $tb2)) { $x.Size = New-Object Drawing.Size(170, 32); $x.Margin = '0,0,4,0'; $x.Font = New-Object Drawing.Font('Malgun Gothic', 10, [Drawing.FontStyle]::Bold); $tabs.Controls.Add($x) }
+    $tabSel = { param($i) $t1.Visible = $i -eq 0; $t2.Visible = $i -eq 1; foreach ($x in @(@($tb1, 0), @($tb2, 1))) { $x[0].Tag = ($x[1] -eq $i) }; $tb1.Invalidate(); $tb2.Invalidate() }
+    $tb1.Add_Click({ & $tabSel 0 }); $tb2.Add_Click({ & $tabSel 1 })
+    $tc.Controls.Add($t2); $tc.Controls.Add($t1); $tc.Controls.Add($tabs)
     . $KeepTab $t2
     $fp = New-Object Windows.Forms.FlowLayoutPanel; $fp.FlowDirection = 'TopDown'; $fp.AutoSize = $true; $fp.WrapContents = $false; $fp.Controls.AddRange(@($tc, $bp)); $f.Controls.Add($fp); $f.AcceptButton = $bApply; $f.CancelButton = $bClose
+    # 디아블로풍 꾸미기: 어두운 배경 · 금색 글씨, 게임 메뉴 그림 배너, 돌 버튼 (게임 그림이 없으면 색만)
+    $fe = Join-Path $env:APPDATA 'D2 Survivors\d2\frontend'
+    $cBg = [Drawing.Color]::FromArgb(16, 12, 9); $cBg2 = [Drawing.Color]::FromArgb(30, 23, 16); $cGold = [Drawing.Color]::FromArgb(222, 196, 132); $cTxt = [Drawing.Color]::FromArgb(214, 206, 188); $cEdge = [Drawing.Color]::FromArgb(92, 72, 42)
+    $imgBtn = $null; try { $imgBtn = [Drawing.Image]::FromFile((Join-Path $fe 'button-wide.png')) } catch {}
+    $imgBan = $null; try { $imgBan = [Drawing.Image]::FromFile((Join-Path $fe 'menu.png')) } catch {}
+    $skin = {
+        param($c)
+        if ($c -is [Windows.Forms.DataGridView]) {
+            $c.BackgroundColor = $cBg; $c.GridColor = $cEdge; $c.BorderStyle = 'FixedSingle'; $c.EnableHeadersVisualStyles = $false
+            $c.DefaultCellStyle.BackColor = $cBg2; $c.DefaultCellStyle.ForeColor = $cTxt; $c.DefaultCellStyle.SelectionBackColor = [Drawing.Color]::FromArgb(80, 56, 24); $c.DefaultCellStyle.SelectionForeColor = [Drawing.Color]::White
+            $c.ColumnHeadersDefaultCellStyle.BackColor = [Drawing.Color]::FromArgb(44, 32, 18); $c.ColumnHeadersDefaultCellStyle.ForeColor = $cGold; $c.ColumnHeadersBorderStyle = 'Single'
+        } elseif ($c -is [Windows.Forms.Button]) {
+            $c.FlatStyle = 'Flat'; $c.FlatAppearance.BorderColor = $cEdge; $c.ForeColor = [Drawing.Color]::FromArgb(240, 228, 196); $c.BackColor = $cBg2; $c.Padding = '10,2,10,2'
+            if ($imgBtn) { $c.BackgroundImage = $imgBtn; $c.BackgroundImageLayout = 'Stretch'; $c.FlatAppearance.BorderSize = 0 }
+        } elseif ($c -is [Windows.Forms.TextBox] -or $c -is [Windows.Forms.ComboBox] -or $c -is [Windows.Forms.NumericUpDown]) {
+            $c.BackColor = [Drawing.Color]::FromArgb(36, 28, 20); $c.ForeColor = $cTxt
+            if ($c -is [Windows.Forms.ComboBox]) { $c.FlatStyle = 'Flat' } else { $c.BorderStyle = 'FixedSingle' }
+        } elseif ($c -is [Windows.Forms.GroupBox]) { $c.ForeColor = $cGold; $c.BackColor = $cBg }
+        elseif ($c -is [Windows.Forms.TabPage] -or $c -is [Windows.Forms.Panel] -or $c -is [Windows.Forms.Form]) { $c.BackColor = $cBg; $c.ForeColor = $cTxt }
+        elseif ($c -is [Windows.Forms.CheckBox] -or $c -is [Windows.Forms.Label]) { if ($c.ForeColor -eq [Drawing.Color]::DarkBlue) { $c.ForeColor = $cGold } else { $c.ForeColor = $cTxt } }
+        foreach ($x in $c.Controls) { & $skin $x }
+    }
+    & $skin $f
+    # 탭: 어두운 바탕에 금색 글씨로 직접 그림
+    foreach ($x in @($tb1, $tb2)) { $x.FlatAppearance.BorderSize = 1; $x.Add_Paint({ param($s, $e) if ($s.Tag) { $e.Graphics.DrawRectangle((New-Object Drawing.Pen($cGold, 2)), 1, 1, $s.Width - 3, $s.Height - 3) } }) }; & $tabSel 0
+    # 맨 위 배너: 게임 메뉴 그림(가로로 잘라 채움) + 어둡게 + 금색 제목
+    $ban = New-Object Windows.Forms.Panel; $ban.Size = New-Object Drawing.Size($tc.Width, 96); $ban.Margin = '0,0,0,6'
+    $ban.Add_Paint({ param($s, $e)
+        $g = $e.Graphics; $r = $s.ClientRectangle
+        if ($imgBan) { $h = [int]($imgBan.Width * $r.Height / $r.Width); $g.DrawImage($imgBan, $r, (New-Object Drawing.Rectangle(0, [int](($imgBan.Height - $h) * 0.66), $imgBan.Width, $h)), [Drawing.GraphicsUnit]::Pixel) } else { $g.Clear($cBg2) }
+        $g.FillRectangle((New-Object Drawing.Drawing2D.LinearGradientBrush($r, [Drawing.Color]::FromArgb(150, 8, 6, 4), [Drawing.Color]::FromArgb(0, 8, 6, 4), [single]0)), $r)
+        $g.TextRenderingHint = 'AntiAliasGridFit'
+        $ft = New-Object Drawing.Font('Times New Roman', 26, [Drawing.FontStyle]::Bold); $fs = New-Object Drawing.Font('Malgun Gothic', 10)
+        $g.DrawString('D2S-MyPatch', $ft, (New-Object Drawing.SolidBrush([Drawing.Color]::Black)), 22, 16); $g.DrawString('D2S-MyPatch', $ft, (New-Object Drawing.SolidBrush($cGold)), 20, 14)
+        $g.DrawString(("v$Ver  ·  " + (T '게임 빌드 ' 'game build ') + $build + '   ·   ' + $st.Text), $fs, (New-Object Drawing.SolidBrush($cTxt)), 24, 60)
+        $g.DrawRectangle((New-Object Drawing.Pen($cEdge)), 0, 0, $r.Width - 1, $r.Height - 1)
+    })
+    $fp.Controls.Add($ban); $fp.Controls.SetChildIndex($ban, 0); $st.Visible = $false
     if ($env:D2S_SHOT) { $f.Add_Shown({ $b = New-Object Drawing.Bitmap($f.Width, $f.Height); $f.DrawToBitmap($b, (New-Object Drawing.Rectangle(0, 0, $f.Width, $f.Height))); $b.Save($env:D2S_SHOT); $f.Close() }) }
     $f.Add_Shown({ $f.Activate(); $f.BringToFront() })
     $res = $f.ShowDialog()
