@@ -56,7 +56,7 @@ if (-not (Test-Path $asar)) {
 $backup = "$asar.orig"
 
 # 업데이트 확인: GitHub의 version.txt가 더 크면 새 bat를 받아 자기 자신을 바꾸고 다시 실행
-$Ver = '1.51'
+$Ver = '1.52'
 $Repo = 'mastree-master/D2S-MyPatch'
 # raw.githubusercontent는 몇 분씩 예전 파일을 내주므로 캐시 없는 GitHub API로 받는다
 $raw = "https://api.github.com/repos/$Repo/contents"
@@ -146,6 +146,9 @@ $pv = if ($game -match 'globalThis\.__d2sv=([\d.]+);') { $Matches[1] } else { ''
 
 # 패치 기록 (선택 창 오른쪽에 표시). 새 버전은 맨 위에 추가
 $changelog = @'
+1.52
+- 게임 아이템 필터(숨김 · 줍기 · 판매 · 보관)를 완전히 무시하고 F2 보관 설정만 따름 (숨김으로 둔 아이템도 주워서 F2대로 처리)
+
 1.51
 - 보관 설정(F2): 룬워드를 부위별로 (한손 · 양손 · 갑옷 · 투구 · 방패), 룬워드마다 만들 수 있는 부위만 표시. 기존 이름별 설정은 그대로 이어받음
 
@@ -670,11 +673,11 @@ $keepText = ReadFile $keepEntry
 if ($O.pickup) {
 $snap = @($game, $keepText, $uiText, $mainText, $langText, $header); try {
 # 떨어진 아이템은 거리와 상관없이 즉시 처리한다 (원래는 몸에 닿아야 주움)
-# 미등록 유니크/세트는 거리·숨김·자동판매와 상관없이 바로 주워 등록한다
+# 게임 아이템 필터(숨김·판매·보관)는 쓰지 않는다. 모든 아이템을 바로 줍고, 등록·교체 외에는 F2 보관 설정대로 판매/인벤/창고
 # 그 밖의 아이템(등록된 유니크 포함)은 바로 판매한다. 퀘스트 아이템·부적은 인벤토리로
 $quest = (Find $keepText ('=(' + $id + ')\(t\)\?' + $id + '\(' + $id + '\(t\.name\),`red`\)') 'quest item').Groups[1].Value
 $reach = Find $keepText ('let t=n\.radius\+(' + $id + '),i=e\.reaching===r;if\(i&&c<t&&\(r\.dropped=!1\),r\.loot===`hide`&&!i\)continue;let a=r\.loot===`sell`&&!!e\.sell;') 'pickup radius'
-$keepText = Swap $keepText $reach.Value ('let __nw=e.isNew?.(r.item),t=1/0,i=e.reaching===r;if(i&&c<t&&(r.dropped=!1),r.loot===`hide`&&!i&&!__nw)continue;let a=!__nw&&(!' + $quest + '(r.item)||r.item.base===`hcx`)&&r.item.type!==`charm`&&!!e.sell;') 'pickup radius'
+$keepText = Swap $keepText $reach.Value ('let __nw=e.isNew?.(r.item),t=1/0,i=e.reaching===r;i&&c<t&&(r.dropped=!1);let a=!__nw&&(!' + $quest + '(r.item)||r.item.base===`hcx`)&&r.item.type!==`charm`&&!!e.sell;') 'pickup radius'
 } catch { if ("$_" -notlike 'D2SUNSUP*') { throw }; $game, $keepText, $uiText, $mainText, $langText, $header = $snap; $bad += 'pickup' } }
 if ($O.goldchest) {
 $snap = @($game, $keepText, $uiText, $mainText, $langText, $header); try {
