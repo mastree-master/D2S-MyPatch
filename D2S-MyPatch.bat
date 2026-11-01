@@ -31,10 +31,11 @@ if (-not (Test-Path $asar)) {
 $backup = "$asar.orig"
 
 # 업데이트 확인: GitHub의 version.txt가 더 크면 새 bat를 받아 자기 자신을 바꾸고 다시 실행
-$Ver = '1.13'
+$Ver = '1.14'
 $Repo = 'mastree-master/D2S-MyPatch'
 # raw.githubusercontent는 몇 분씩 예전 파일을 내주므로 캐시 없는 GitHub API로 받는다
 $raw = "https://api.github.com/repos/$Repo/contents"
+$raw2 = "https://raw.githubusercontent.com/$Repo/main"  # API 한도(IP당 1시간 60회) 초과 때 대신 쓰는 주소 (몇 분 늦을 수 있음)
 $inv = [Globalization.CultureInfo]::InvariantCulture
 # version.txt: 첫 줄 버전, 그 아래 줄은 패치 내용
 try {
@@ -42,7 +43,7 @@ try {
     $wc = New-Object Net.WebClient
     $wc.Encoding = [Text.Encoding]::UTF8
     $wc.Headers['User-Agent'] = 'D2S-MyPatch'; $wc.Headers['Accept'] = 'application/vnd.github.raw'
-    $vt = @($wc.DownloadString("$raw/version.txt") -split "`r?`n")
+    $vt = try { @($wc.DownloadString("$raw/version.txt") -split "`r?`n") } catch { $raw = $raw2; @($wc.DownloadString("$raw2/version.txt?" + [DateTime]::Now.Ticks) -split "`r?`n") }
     $nv = [decimal]::Parse($vt[0].Trim(), $inv)
 } catch { $nv = 0; $vt = @() }
 if ($nv -gt [decimal]::Parse($Ver, $inv) -and $env:D2SF) {
@@ -119,6 +120,10 @@ $pv = if ($game -match 'globalThis\.__d2sv=([\d.]+);') { $Matches[1] } else { ''
 
 # 패치 기록 (선택 창 오른쪽에 표시). 새 버전은 맨 위에 추가
 $changelog = @'
+1.14
+- GitHub 사용 한도 초과로 업데이트가 안 받아지던 문제 수정
+- 게임 안 확인은 한도 없는 주소로 1분마다
+
 1.13
 - 선택 창 오른쪽에 패치 기록 표시
 - 게임 안 패치 기록 (F10)
@@ -498,8 +503,8 @@ $mainText = [regex]::Replace($mainText, $throttle, '')
 $mainText = Swap $mainText 'if (method === "POST" && (typeof body !== "string" || body.length > MAX_BODY3)) return { status: 413, body: null };' ('if (method === "POST" && (typeof body !== "string" || body.length > MAX_BODY3)) return { status: 413, body: null };' + "`n    " + 'if (method === "POST") return { status: 200, body: "{}", retryAfter: null };') 'no send'
 # 게임 안 업데이트 알림용: 이 패치 저장소의 파일만 인터넷 접근 허용 (게임은 원래 외부 접속을 모두 막음)
 $mainText = Swap $mainText 'const own = /^(app|devtools|data|blob):/.test(details.url);' ('const own = /^(app|devtools|data|blob):/.test(details.url) || details.url.startsWith("' + $raw + '/");' + $(if ($env:D2SF) { 'if (details.url === "https://d2s-update.invalid/run") { require("child_process").spawn("cmd.exe", ["/c", "start", "\"\"", "\"" + ' + ($env:D2SF | ConvertTo-Json) + ' + "\""], { detached: true, stdio: "ignore", windowsVerbatimArguments: true, env: { ...process.env, D2S_RELAUNCH: "1" } }).unref(); setTimeout(() => import_electron4.app.quit(), 300); }' })) 'update allow'
-# 게임 본체에서 2분마다 GitHub 버전 확인 (GitHub API 무료 한도: IP당 1시간 60회). 새 버전이면 화면의 __updShow 호출
-$mainText += ';(() => { const https = require("https"); const check = () => { https.get({ host: "api.github.com", path: "/repos/' + $Repo + '/contents/version.txt", headers: { "User-Agent": "D2S-MyPatch", Accept: "application/vnd.github.raw" } }, (r) => { let b = ""; r.setEncoding("utf8"); r.on("data", (d) => b += d); r.on("end", () => { if (r.statusCode !== 200 || !(+b.split(/\r?\n/)[0] > ' + $Ver + ')) return; for (const w of require("electron").webContents.getAllWebContents()) w.executeJavaScript("globalThis.__updShow && globalThis.__updShow(" + JSON.stringify(b) + ")").catch(() => {}); }); }).on("error", () => {}); }; setTimeout(check, 15e3); setTimeout(check, 45e3); setInterval(check, 12e4); })();'
+# 게임 본체에서 1분마다 GitHub 버전 확인 (raw 주소: 한도 없음, 최대 5분 늦음). 새 버전이면 화면의 __updShow 호출
+$mainText += ';(() => { const https = require("https"); const check = () => { https.get({ host: "raw.githubusercontent.com", path: "/' + $Repo + '/main/version.txt?" + Date.now(), headers: { "User-Agent": "D2S-MyPatch" } }, (r) => { let b = ""; r.setEncoding("utf8"); r.on("data", (d) => b += d); r.on("end", () => { if (r.statusCode !== 200 || !(+b.split(/\r?\n/)[0] > ' + $Ver + ')) return; for (const w of require("electron").webContents.getAllWebContents()) w.executeJavaScript("globalThis.__updShow && globalThis.__updShow(" + JSON.stringify(b) + ")").catch(() => {}); }); }).on("error", () => {}); }; setTimeout(check, 15e3); setInterval(check, 6e4); })();'
 $mainBytes = $utf8.GetBytes($mainText)
 $header = $header.Replace($mm[0].Value, (NewEntry $mm[0] $mainBytes ($dataLen + $gameBytes.Length + $keepBytes.Length + $uiBytes.Length + $langBytes.Length)))
 # 패치 폴더에 kodia.ttf가 있으면 게임 한글 폰트 두 개(fonts-ko/kodia.woff2, irisl.woff2)를 모두 그 파일로 바꾼다
