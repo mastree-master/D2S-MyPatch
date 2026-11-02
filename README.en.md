@@ -6,7 +6,7 @@
 
 <!-- notes -->
 ### Latest changes v1.61
-- 티리엘 등장(파편 10개 + 5막 보스 처치) 때 포털 자동 입장 안 함, 소리 + AFK 중이면 자동 정지
+- AFK 화면에 "티리엘 나오면 정지" 체크 (기본 꺼짐): 켜면 티리엘 등장(파편 10개 + 5막 보스 처치) 때 포털 자동 입장 안 함, 소리, AFK 중이면 자동 정지
 
 <details><summary>Earlier changes (expand)</summary>
 
