@@ -86,6 +86,19 @@ if ($nv -gt [decimal]::Parse($Ver, $inv) -and $env:D2SF) {
     }
 }
 
+# 게임 업데이트 뒤 자동 재패치: 설치가 끝나 app.asar 가 새 원본(해시 일치)이 되면 설치 프로그램이 다시 켠 게임을 끄고, 저장된 설정으로 패치한 뒤 게임을 켠다 (30분 안에 안 바뀌면 아무것도 안 함)
+if ($env:D2S_AFTERUPDATE) {
+    $Action = 'patch'; $hf = Join-Path $GameDir 'resources\app.asar.sha256'; $fresh = $false
+    for ($i = 0; $i -lt 900 -and -not $fresh; $i++) {
+        Start-Sleep -Seconds 2
+        try { $fresh = (Get-FileHash $asar -Algorithm SHA256).Hash -eq (Get-Content $hf -Raw).Trim() } catch {}
+    }
+    if (-not $fresh) { Done 0 }
+    for ($i = 0; $i -lt 60 -and (Get-Process | Where-Object { $_.Name -like 'D2-Survivors*' }); $i++) { Start-Sleep -Seconds 2 }
+    Start-Sleep -Seconds 5
+    Get-Process -Name 'D2 Survivors' -ErrorAction SilentlyContinue | Stop-Process -Force
+    Start-Sleep -Seconds 2
+}
 for ($i = 0; $i -lt 30 -and (Get-Process -Name 'D2 Survivors' -ErrorAction SilentlyContinue); $i++) {
     if ($i -eq 0) { Write-Host (T '  게임이 꺼지기를 기다리는 중...' '  Waiting for the game to close...') }
     Start-Sleep -Milliseconds 500
@@ -1415,6 +1428,8 @@ $mainText = [regex]::Replace($mainText, $throttle, '')
 $mainText = Swap $mainText 'if (method === "POST" && (typeof body !== "string" || body.length > MAX_BODY3)) return { status: 413, body: null };' ('if (method === "POST" && (typeof body !== "string" || body.length > MAX_BODY3)) return { status: 413, body: null };' + "`n    " + 'if (method === "POST") return { status: 200, body: "{}", retryAfter: null };') 'no send'
 # 게임 안 업데이트 알림용: 이 패치 저장소의 파일만 인터넷 접근 허용 (게임은 원래 외부 접속을 모두 막음)
 $mainText = Swap $mainText 'const own = /^(app|devtools|data|blob):/.test(details.url);' ('const own = /^(app|devtools|data|blob):/.test(details.url) || details.url.startsWith("' + $raw + '/");' + $(if ($env:D2SF) { 'if (details.url === "https://d2s-update.invalid/run") { require("child_process").spawn("cmd.exe", ["/c", "start", "\"\"", "\"" + ' + ($env:D2SF | ConvertTo-Json) + ' + "\""], { detached: true, stdio: "ignore", windowsVerbatimArguments: true, env: { ...process.env, D2S_RELAUNCH: "1" } }).unref(); setTimeout(() => import_electron4.app.quit(), 300); }' })) 'update allow'
+# 게임 업데이트 설치로 꺼질 때 자동 재패치 예약 (bat 로 실행했을 때만)
+if ($env:D2SF) { $mainText += ';(() => { const { app } = require("electron"), fs = require("fs"), path = require("path"); const num = (s) => { const m = String(s).match(/(\d{4})\.?(\d{4})\.(\d+)/); return m ? +(m[1] + m[2]) + m[3] / 1e3 : 0; }; app.on("will-quit", () => { try { const f = JSON.parse(fs.readFileSync(path.join(process.env.LOCALAPPDATA || "", "d2-survivors-updater", "pending", "update-info.json"), "utf8")).fileName; if (!(num(f) > num(app.getVersion()))) return; require("child_process").spawn("cmd.exe", ["/c", "start", "\"\"", "\"" + ' + ($env:D2SF | ConvertTo-Json) + ' + "\""], { detached: true, stdio: "ignore", windowsVerbatimArguments: true, env: { ...process.env, D2S_AFTERUPDATE: "1", D2S_RELAUNCH: "1" } }).unref(); } catch {} }); })();' }
 # 보관 설정 동기화: 5초마다 keep.json 을 게임에 넘겨 주고(더 최신이면 게임이 받음), 바뀐 설정과 메뉴 목록을 파일로 저장 (패치 GUI 의 보관 설정 탭이 읽고 씀)
 $mainText += ';(() => { const fs = require("fs"), path = require("path"), dir = path.join(process.env.APPDATA || "", "D2S-MyPatch"), kf = path.join(dir, "keep.json"), mf = path.join(dir, "keep-meta.json"), of = path.join(dir, "options.json"); const { webContents } = require("electron"); setInterval(() => { let j = null; try { j = fs.readFileSync(kf, "utf8").replace(/^\uFEFF/, ""); JSON.parse(j); } catch { j = null; } let oj = null, om = 0; try { oj = fs.readFileSync(of, "utf8").replace(/^\uFEFF/, ""); JSON.parse(oj); om = fs.statSync(of).mtimeMs; } catch { oj = null; } for (const w of webContents.getAllWebContents()) { oj && w.executeJavaScript("globalThis.__onIn && globalThis.__onIn(" + oj + "," + om + ")").catch(() => {}); w.executeJavaScript("globalThis.__onDump ? globalThis.__onDump() : null").then((r) => { if (!r) return; let o = {}; try { o = JSON.parse(fs.readFileSync(of, "utf8").replace(/^\uFEFF/, "")); } catch {} Object.assign(o, JSON.parse(r)); fs.mkdirSync(dir, { recursive: true }); fs.writeFileSync(of, JSON.stringify(o, null, 1)); }).catch(() => {}); j && w.executeJavaScript("globalThis.__ksIn && globalThis.__ksIn(" + j + ")").catch(() => {}); w.executeJavaScript("globalThis.__ksDump ? globalThis.__ksDump() : null").then((r) => { if (!r) return; const o = JSON.parse(r); fs.mkdirSync(dir, { recursive: true }); o.keep && fs.writeFileSync(kf, JSON.stringify(o.keep)); o.meta && fs.writeFileSync(mf, JSON.stringify(o.meta)); }).catch(() => {}); } }, 5e3); })();'
 # 게임 본체에서 3분마다 GitHub API로 버전 확인 (IP당 1시간 60회 한도 → 20회 사용), 실패하면 raw 주소(몇 분 늦음). 새 버전이면 화면의 __updShow 호출
