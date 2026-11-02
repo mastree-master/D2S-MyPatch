@@ -133,7 +133,7 @@ $feat = [ordered]@{
     afk = T 'AFK 모드 (F8) · 최소화해도 안 멈춤' 'AFK mode (F8) · no minimize throttle'
     speed = T '배속 (F7: 1 → 1.5 → 2 → 3배, 화면 위에 표시)' 'Game speed (F7: 1 → 1.5 → 2 → 3x, shown on top)'
     bright = T '밝기 · 명암 (PageUp/PageDown, Home/End)' 'Brightness · contrast (PageUp/PageDown, Home/End)'
-    hud = T 'HUD 배치 (소환수 · 스킬 한 줄씩 왼쪽 위, 게임 정보 오른쪽 위)' 'HUD layout (pets · skills one row each top-left, run info top-right)'
+    hud = T 'HUD 배치 (소환수 · 스킬 왼쪽 위, 게임 정보 오른쪽 위)' 'HUD layout (pets · skills one row each top-left, run info top-right)'
     corpse = T '시체 숨김' 'Hide corpses'
     fps = T 'FPS 표시 (F9)' 'Show FPS (F9)'
     dropsnd = T '드롭 알림 소리 (F2에서 인벤 · 창고로 정한 아이템)' 'Drop sound (items set to bag · stash in F2)'
@@ -561,8 +561,8 @@ if (-not $Action) {
     $lg.Text = (T '패치 기록' 'Patch log') + "`r`n`r`n" + ($changelog -replace "`r?`n", "`r`n"); $lg.Margin = '16,0,0,0'
     $row.Controls.Add($p); $row.Controls.Add($lg)
     foreach ($x in @($cbp, $np, $hk)) { $x.PerformLayout(); $x.Size = $x.PreferredSize; $x.Parent.PerformLayout() }
-    $bw = [Math]::Max([Math]::Max($cbp.Parent.Width, $np.Parent.Width), $hk.Parent.Width); foreach ($x in @($cbp, $np, $hk)) { $x.Parent.AutoSize = $false; $x.Parent.Size = New-Object Drawing.Size($bw, ($x.PreferredSize.Height + 46)) }; $p.PerformLayout()
-    $lg.Size = New-Object Drawing.Size(412, $p.PreferredSize.Height)
+    $bw = [Math]::Max([Math]::Max($cbp.PreferredSize.Width, $np.PreferredSize.Width), $hk.PreferredSize.Width) + 34; foreach ($x in @($cbp, $np, $hk)) { $x.Parent.AutoSize = $false; $x.Parent.Size = New-Object Drawing.Size($bw, ($x.PreferredSize.Height + 46)); $x.AutoSize = $false; $x.Size = New-Object Drawing.Size(($bw - 30), $x.PreferredSize.Height) }; $p.PerformLayout()
+    $p.AutoSize = $false; $p.Size = $p.PreferredSize; $row.PerformLayout(); $lg.Size = New-Object Drawing.Size(412, $p.PreferredSize.Height)
     $tc = New-Object Windows.Forms.Panel; $tc.Size = New-Object Drawing.Size(($row.PreferredSize.Width + 26), ($row.PreferredSize.Height + 70))
     $t1 = New-Object Windows.Forms.Panel; $t1.Controls.Add($row); $t1.Padding = 8; $t2 = New-Object Windows.Forms.Panel; $t2.Padding = 8; $t2.Visible = $false
     $tabs = New-Object Windows.Forms.FlowLayoutPanel; $tabs.Dock = 'Top'; $tabs.Height = 36; $tabs.WrapContents = $false
