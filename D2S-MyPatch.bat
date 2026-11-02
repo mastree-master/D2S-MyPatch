@@ -56,7 +56,7 @@ if (-not (Test-Path $asar)) {
 $backup = "$asar.orig"
 
 # 업데이트 확인: GitHub의 version.txt가 더 크면 새 bat를 받아 자기 자신을 바꾸고 다시 실행
-$Ver = '1.61'
+$Ver = '1.62'
 $Repo = 'mastree-master/D2S-MyPatch'
 # raw.githubusercontent는 몇 분씩 예전 파일을 내주므로 캐시 없는 GitHub API로 받는다
 $raw = "https://api.github.com/repos/$Repo/contents"
@@ -150,6 +150,12 @@ $pv = if ($game -match 'globalThis\.__d2sv=([\d.]+);') { $Matches[1] } else { ''
 
 # 패치 기록 (선택 창 오른쪽에 표시). 새 버전은 맨 위에 추가
 $changelog = @'
+1.62
+- 기능 실시간 켜기 · 끄기: 게임 안 F5 창에서 바로 적용 (글꼴만 재시작 필요). 패치 창 체크와 서로 연동 (5초 안에 반영), 맨 위 줄 ✓/✗ 도 바로 바뀜
+- 획득 목록 탭: 전체 / 등록 / 교체 / 인벤 / 창고 / 판매 (예전 기록도 분류)
+- "스킬 붙은 부적은 무조건 창고로" 삭제: F2 부적 설정과 중복 (부적은 F2 설정대로)
+- 기능 설명 문구 정리, 패치 창 기능 상자가 21번째부터 잘리던 문제 · 상자 오른쪽 테두리 가려지던 문제 · 패치 기록 칸 폭
+
 1.61
 - 1102.1: F4 룬워드 목록 · F2 옵션 이름이 내부 이름(item_fasterattackrate 등)으로 나오던 문제 (툴팁 함수가 룬워드에 mods 를 요구)
 - 게임 빌드 2026.1102.1 대응 (게임 파일 구조가 바뀜: moved 파일 없어지고 화면 코드가 둘로 나뉨, 단축키 바꾸기 기능 생김). 이전 빌드 1101.1 · 1030.2도 그대로 가능
@@ -531,7 +537,7 @@ if (-not $Action) {
     $cMode.SelectedIndex = [int]($O.automode -eq 'next')
     $mr.Controls.Add($ml); $mr.Controls.Add($cMode); $np.Controls.Add($mr)
     $hk = Box (T '인게임 단축키' 'In-game hotkeys') 172
-    foreach ($x in @(@('F1', (T '획득 · 판매 통계' 'Loot stats')), @('F2', (T '보관 설정' 'Keep settings')), @('F3', (T '드롭 확률' 'Drop odds')), @('F4', (T '룬워드 목록' 'Runewords')), @('F6', (T '설명서' 'Guide')), @('F7', (T '배속' 'Speed')), @('F8', (T 'AFK 모드' 'AFK mode')), @('F9', (T 'FPS 표시' 'FPS')), @('F10', (T '패치 기록' 'Patch log')), @('B', (T '창고 열기 · 닫기' 'Stash')), @('Ctrl+Click', (T '창고로 보내기' 'To stash')), @('Shift', (T '같은 아이템 위치 전부' 'All copies')), @('PgUp/PgDn', (T '밝기' 'Brightness')), @('Home/End', (T '명암' 'Contrast')))) {
+    foreach ($x in @(@('F1', (T '획득 · 판매 통계' 'Loot stats')), @('F2', (T '보관 설정' 'Keep settings')), @('F5', (T '기능 켜기 · 끄기' 'Features on · off')), @('F3', (T '드롭 확률' 'Drop odds')), @('F4', (T '룬워드 목록' 'Runewords')), @('F6', (T '설명서' 'Guide')), @('F7', (T '배속' 'Speed')), @('F8', (T 'AFK 모드' 'AFK mode')), @('F9', (T 'FPS 표시' 'FPS')), @('F10', (T '패치 기록' 'Patch log')), @('B', (T '창고 열기 · 닫기' 'Stash')), @('Ctrl+Click', (T '창고로 보내기' 'To stash')), @('Shift', (T '같은 아이템 위치 전부' 'All copies')), @('PgUp/PgDn', (T '밝기' 'Brightness')), @('Home/End', (T '명암' 'Contrast')))) {
         $hr = New-Object Windows.Forms.FlowLayoutPanel; $hr.AutoSize = $true; $hr.WrapContents = $false; $hr.Margin = '3,2,18,2'
         $kl = New-Object Windows.Forms.Label; $kl.Text = $x[0]; $kl.AutoSize = $false; $kl.Size = New-Object Drawing.Size(92, 24); $kl.TextAlign = 'MiddleCenter'; $kl.Font = New-Object Drawing.Font('Consolas', 10, [Drawing.FontStyle]::Bold); $kl.Tag = 'key'
         $kl.Add_Paint({ param($s, $e) $e.Graphics.DrawRectangle((New-Object Drawing.Pen([Drawing.Color]::FromArgb(150, 118, 64))), 0, 0, $s.Width - 1, $s.Height - 1) })
@@ -836,6 +842,7 @@ F6  설명서 (이 창)
 F10 패치 기록
 F4  룬워드 목록 (고정 옵션 / 변하는 옵션 범위)
 F3  드롭 확률 계산기 (단계 · 매찬별 룬워드 · 유니크 확률)
+F5  기능 켜기 · 끄기 (바로 적용)
 F2  보관 설정: 아이템마다 판매 / 인벤 / 창고 선택, 등록 개수
 F7  배속 1 → 1.5 → 2 → 3배
 F1  획득 · 판매 통계 (이번 실행 / 오늘, 시간당)
