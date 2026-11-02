@@ -511,7 +511,7 @@ if (-not $Action) {
         $fl = New-Object Windows.Forms.FlowLayoutPanel; $fl.FlowDirection = 'TopDown'; $fl.WrapContents = $true; $fl.AutoSize = $true; $fl.Location = New-Object Drawing.Point(10, 34); $fl.MaximumSize = New-Object Drawing.Size(0, $h)
         $gb.Controls.Add($fl); $p.Controls.Add($gb); $fl
     }
-    $cbp = Box (T '기능' 'Features') 300
+    $cbp = Box (T '기능' 'Features') ([Math]::Ceiling($feat.Count / 2) * 28 + 4)
     $cb = @{}
     foreach ($k in $feat.Keys) {
         $c = New-Object Windows.Forms.CheckBox; $c.Text = $feat[$k]; $c.AutoSize = $true; $c.Checked = [bool]$O[$k]
@@ -562,8 +562,8 @@ if (-not $Action) {
     $row.Controls.Add($p); $row.Controls.Add($lg)
     foreach ($x in @($cbp, $np, $hk)) { $x.PerformLayout(); $x.Size = $x.PreferredSize; $x.Parent.PerformLayout() }
     $bw = [Math]::Max([Math]::Max($cbp.Parent.Width, $np.Parent.Width), $hk.Parent.Width); foreach ($x in @($cbp, $np, $hk)) { $x.Parent.AutoSize = $false; $x.Parent.Size = New-Object Drawing.Size($bw, ($x.PreferredSize.Height + 46)) }; $p.PerformLayout()
-    $lg.Size = New-Object Drawing.Size(360, $p.PreferredSize.Height)
-    $tc = New-Object Windows.Forms.Panel; $tc.Size = New-Object Drawing.Size(($row.PreferredSize.Width + 70), ($row.PreferredSize.Height + 70))
+    $lg.Size = New-Object Drawing.Size(412, $p.PreferredSize.Height)
+    $tc = New-Object Windows.Forms.Panel; $tc.Size = New-Object Drawing.Size(($row.PreferredSize.Width + 26), ($row.PreferredSize.Height + 70))
     $t1 = New-Object Windows.Forms.Panel; $t1.Controls.Add($row); $t1.Padding = 8; $t2 = New-Object Windows.Forms.Panel; $t2.Padding = 8; $t2.Visible = $false
     $tabs = New-Object Windows.Forms.FlowLayoutPanel; $tabs.Dock = 'Top'; $tabs.Height = 36; $tabs.WrapContents = $false
     foreach ($x in @($t1, $t2)) { $x.Dock = 'Fill'; $x.BorderStyle = 'FixedSingle' }
