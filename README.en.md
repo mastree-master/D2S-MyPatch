@@ -2,7 +2,7 @@
 
 [한국어](README.md) | **English**
 
-**Current patch: v1.61 · for game build 2026.1102.1** (previous build 2026.1030.2 also works)
+**Current patch: v1.61 · for game build 2026.1102.1** (previous builds 2026.1101.1 · 2026.1030.2 also work)
 
 <!-- notes -->
 ### Latest changes v1.61
