@@ -500,6 +500,291 @@ v1 ~ v5 (이전 번호)
 - AFK 모드 (F8)
 - 순위표 전송 차단, 글꼴 교체
 '@
+$changelogFull = @'
+1.63
+- 게임 빌드 2026.1102.2 대응 (비교 상자 · 숨은 값이 게임 함수 이름이 바뀌어도 찾아가게)
+- 창고 정리 배치 방식 선택: 앞 탭부터 채우기 / 종류별로 탭 나누기 (무기 · 방어구 · 장신구 · 부적 · 기타) / 탭마다 따로 정리
+- 창고에 넣을 때 가로로 채우기 (F5 창 체크): 오른쪽으로 채우고 줄이 차면 다음 줄 왼쪽부터. Ctrl+클릭 · 자동 보관 · 정리 모두 적용
+- 창고 정리 (F5 창): 개인 · 공유 1 · 2 · 3 중 체크한 탭을 합쳐 종류별 / 같은 아이템끼리 / 등급별 / 크기순으로 다시 배치, [되돌리기]. 창고를 연 채로 눌러도 바로 다시 그려짐, 정리 전후 아이템을 비교해 하나라도 다르면 원래대로 둠
+- 툴팁 맨 아래에 F2 판정 한 줄: 이 아이템을 주우면 보관함 등록 / 교체 / 인벤 / 창고 / 판매 중 어디로 가는지와 이유 (어떤 옵션이 기준을 넘었는지). F5에서 끄기 가능
+- F5 창에 조절값: 클리어 후 같은 단계 / 다음 단계, 자동 진행 대기(초), 밝기 · 명암. 바로 적용, 패치 창과 연동
+- 단축키 바꾸기 (F5 창): F1 ~ F10, B. 바꾼 뒤 원래 키는 안 먹힘, Delete로 원래대로
+- 획득 목록 검색칸 (탭 줄 오른쪽, 띄어쓰기 무시)
+
+1.62
+- 기능 실시간 켜기 · 끄기: 게임 안 F5 창에서 바로 적용 (글꼴만 재시작 필요). 패치 창 체크와 서로 연동 (5초 안에 반영), 맨 위 줄 ✓/✗ 도 바로 바뀜
+- 획득 목록 탭: 전체 / 등록 / 교체 / 인벤 / 창고 / 판매 (예전 기록도 분류)
+- "스킬 붙은 부적은 무조건 창고로" 삭제: F2 부적 설정과 중복 (부적은 F2 설정대로)
+- 기능 설명 문구 정리, 패치 창 기능 상자가 21번째부터 잘리던 문제 · 상자 오른쪽 테두리 가려지던 문제 · 패치 기록 칸 폭
+
+1.61
+- 1102.1: F4 룬워드 목록 · F2 옵션 이름이 내부 이름(item_fasterattackrate 등)으로 나오던 문제 (툴팁 함수가 룬워드에 mods 를 요구)
+- 게임 빌드 2026.1102.1 대응 (게임 파일 구조가 바뀜: moved 파일 없어지고 화면 코드가 둘로 나뉨, 단축키 바꾸기 기능 생김). 이전 빌드 1101.1 · 1030.2도 그대로 가능
+- AFK 중에는 F키 말고 다른 키가 게임에 안 넘어감 (I · C · B 등이 눌려 인벤 창이 열리고 게임이 멈추던 문제)
+- 패치 창 기능에 "티리엘 나오면 멈춤" (기본 꺼짐): 켜면 티리엘 등장(파편 10개 + 5막 보스 처치) 때 포털 자동 입장 안 함, 소리, AFK 중이면 자동 정지
+
+1.60
+- AFK 자동 정지: AFK 화면에서 시간(분, 0 = 무제한)과 꽉 참(인벤 · 개인 창고 · 공유 1 · 2 · 3 중 체크한 곳이 전부 꽉 차면) 설정. 정지하면 소리 + 게임 일시정지, 클리어 후 자동 진행도 멈춤
+- AFK 기록 이어가기: 체크하면 AFK를 끄고 다시 켜도 게임 켠 뒤부터 합산 (끄면 켤 때마다 새로 시작)
+- 드롭 알림 소리: F2에서 인벤 · 창고로 정한 아이템을 주우면 소리 (창고 3음, 인벤 2음). 패치 창 기능에서 끄기 가능
+- 획득 · 판매 통계 창 (F1): 이번 실행 · 오늘 따로, 등록 · 교체 · 인벤 · 창고 · 판매 개수, 판매 골드, 판 수, 시간당
+- F2 보관 설정 프리셋: 1 ~ 3번 칸에 지금 설정 저장 / 적용
+- 세이브 자동 백업: 게임 켜고 1분 뒤 + 30분마다 %APPDATA%\D2S-MyPatch\backup (최근 48개). 패치 창 [세이브 백업 폴더], 복원은 게임 설정의 저장 데이터 가져오기
+- 패치 창 [설정 내보내기] / [설정 가져오기]: 기능 체크 · 조절값 · 보관 설정을 파일 하나로
+- 패치 창 위쪽에 마지막 패치 시각 · 적용 기능 수 · 안 된 기능 표시
+- 빛의 파편 안내 (퀘스트 부서진 빛): 나타나기 전엔 남은 초, 나타나면 소리 + 캐릭터 주변에 깜빡이는 방향 화살표 · 거리 · 몬스터가 지키는지 표시 (AFK 화면 위에도)
+- 설명서(F6) · 패치 창 단축키 상자에 F1 추가, 룬워드 한손 우선 설명 고침
+
+1.59
+- 룬워드 교체 한손 우선: 무기 종류 상관없이 양손 등록본은 한손이 들어오면 교체, 한손 등록본은 양손으로 안 바꿈 (같은 손끼리는 옵션 비교)
+- 비교: 옵션 총합이 같으면 바탕 방어력이 높은 쪽으로 교체 (전에는 같으면 중복으로 보고 판매)
+- [판매] 이유 문구 정확히: "옵션 같음 · 바탕 방어력 낮음 (a < b)", "등록본과 같음 (중복) · F2에서 판매"
+- 드롭 계산기(F3): 진행 중인 판의 공포 단계를 기본값으로 (마을에서는 마지막에 넣은 값), 검색할 때 이름과 확률이 붙어 보이던 문제 수정
+
+1.58
+- 패치 창을 디아블로풍으로: 게임 메뉴 그림 배너 · 금색 제목, 어두운 배경, 게임 돌 버튼, 탭 · 표 · 입력칸 어두운 색 (게임 그림이 없으면 색만)
+- 기능 탭 스크롤 없이 한 화면: 기능 · 조절값을 같은 폭의 상자(금색 테두리 · 제목 띠)에 2열로, 조절값 입력칸 줄 맞춤
+- 보관 설정 탭: 맨 앞 선택 칸, 전체 선택 / 전체 해제(보이는 줄), "체크한 줄을 [인벤 · 판매 · 창고] (으)로 적용", 구분 · 검색 · 설정 필터(인벤만 · 판매만 · 창고만)
+- 패치 창 배너에 움직이는 Diablo II 불꽃 로고 (게임 타이틀 그림), 인게임 단축키 상자, GitHub 버튼
+- 패치 창 제목줄 · 선택칸 · 패치 기록 스크롤바 어두운 색
+- 패치 창 언어 판별을 여러 값으로 (가끔 영어로 뜨던 문제)
+
+1.57
+- 보관 설정: 옵션을 게임 옵션표의 옵션 하나하나로 나눔 (직업별 스킬 · 스킬 트리별 · 모든/화염/냉기/번개/독 저항 · 피해 종류별 · 속도별 · 능력치별 …), 이름은 게임 문구 그대로, 그 부위에 안 붙는 옵션은 없앰
+- 모든 저항은 네 저항이 같이 붙은 공통값으로 따로 판정 (예: 작은 부적 모든 저항 3~5, 개별 저항 3~11)
+- 부위 안의 옵션을 계열별로 접기 (스킬 · 저항 · 생명력/마나 · 능력치 · 피해 · 공격/흡수 · 방어 · 속도 · 매찬/골드 · 기타), 접힌 제목에 판매 아닌 설정 요약
+- 룬워드 · 유니크 · 세트마다 변동 옵션(최소~최대) 표시, 옵션별 "이상 적용": 하나라도 못 미치면 판매
+- 패치 창 보관 설정 탭에도 같은 목록 (변동 옵션 줄 포함)
+- 예전 묶음 설정(스킬 · 저항 등)은 새 칸의 기본값으로 이어받음
+- F2 검색: 아이템 이름(한글 · 영어), 옵션 줄, 룬워드 · 유니크 · 세트의 변동 옵션 줄까지 찾고, 찾은 것이 있는 묶음만 펼침 (띄어쓰기 무시: 공격속도 = 공격 속도, 패치 창 탭도 같음)
+- 보관 설정에 "기타 › 호라드림의 고서" 추가 (판매 / 인벤 / 창고, 기본 판매)
+- 보관 설정 "기타"에 퀘스트 아이템 9종 (기술 책 · 람 에센의 고서 · 생명력 물약 · 저항의 두루마리 · 면죄의 징표 · 호라드림 망치 · 호라드림의 두루마리 · 이니푸스의 두루마리 · 돌무덤 열쇠): 인벤 / 창고 (팔 수 없어 판매는 인벤으로)
+- 유니크 부적(기드의 행운 등)은 "부적 › 유니크 부적"으로 옮김 (부적 바탕 유니크는 자동으로 여기에)
+
+1.56
+- 보관 설정(F2 · 패치 창 탭): 옵션마다 그 부위에 붙을 수 있는 수치 범위 표시 (게임 옵션표 기준, 예: 작은 부적 저항 3~11), 그 부위에 안 붙는 옵션 줄은 숨김
+
+1.55
+- 패치 창 아래가 잘려 "체크한 것 적용" 버튼이 안 보이던 문제 수정 (버튼을 탭 밖 맨 아래로, 탭 안은 넘치면 스크롤)
+
+1.54
+- 패치 창에 "보관 설정 (F2)" 탭: 게임의 F2 와 같은 설정을 표로 편집 (분류 · 검색 · 미등록만 · 보이는 줄 전부 바꾸기, 보이는 줄 상태 요약). 바꾸면 바로 저장되고 게임이 켜져 있으면 몇 초 안에 반영
+- 게임 F2 와 패치 창이 같은 설정 파일(%APPDATA%\D2S-MyPatch\keep.json)을 씀
+- F2 묶음 제목에 현재 상태 표시 (전부 판매 / 인벤 n · 창고 n · 판매 n), 누르면 가장 많은 것 말고 나머지 목록
+
+1.53
+- 보관 설정(F2): 글씨 조금 크게, 매직을 레어 위로, 최소 수치 칸에 "이상 적용" 표시
+
+1.52
+- 게임 아이템 필터(숨김 · 줍기 · 판매 · 보관)를 완전히 무시하고 F2 보관 설정만 따름 (숨김으로 둔 아이템도 주워서 F2대로 처리)
+
+1.51
+- 보관 설정(F2): 룬워드를 부위별로 (한손 · 양손 · 갑옷 · 투구 · 방패), 룬워드마다 만들 수 있는 부위만 표시. 기존 이름별 설정은 그대로 이어받음
+
+1.50
+- 보관 설정(F2): "전부 ~" 버튼은 확인 창을 한 번 더 띄움
+- 되돌리기 (마지막 변경 취소), 설정 파일로 저장 / 불러오기
+
+1.49
+- 보관 설정(F2): 레어 · 매직 부위 세분화 (무기 · 투구 · 갑옷 · 방패 · 장갑 · 신발 · 허리띠 · 반지 · 목걸이 · 주얼), 부위마다 접기
+- 옵션마다 최소 수치: 그 옵션 종류의 수치 합이 이 값 이상일 때만 설정 적용 (예: 레어 장갑 스킬 3 이상 → 창고)
+- 접힌 부위 제목에 판매가 아닌 설정 요약 표시
+
+1.48
+- 보관 설정(F2): 레어 · 매직도 종류(무기 · 방어구 · 반지 · 목걸이 · 주얼) × 옵션별로 판매 / 인벤 / 창고 설정
+- 옵션 분류 보강 (방어 · 막기 · 피해 감소, 생명력 · 마나 흡수 추가)
+- 묶음은 접어 두고 펼쳤을 때만 표시, 검색하면 자동으로 펼침
+
+1.47
+- 보관 설정(F2): 부적을 크기(작은 · 큰 · 거대) × 옵션(스킬 · 저항 · 생명력 · 마나 · 피해 · 명중 · 매찬 골드 · 속도 · 능력치 · 그 밖)별로 판매 / 인벤 / 창고 설정
+- 보관 설정 창 위쪽(등록 개수 · 검색칸) 고정, 버튼 글씨가 안 보이던 문제 수정
+
+1.46
+- 보관 설정 창 (F2): 룬워드 · 유니크 · 세트는 이름별로, 스킬 부적 · 그 밖의 부적 · 레어 · 매직은 종류별로 판매 / 인벤 / 창고를 고름 (검색, 전부 바꾸기)
+- 등록 개수 표시 (유니크 · 세트 · 룬워드 등록 수 / 전체, 미등록 표시): F2 창과 AFK 화면
+- [판매] 줄에 마우스를 올리면 판매 이유와 등록본 대비 바뀐 옵션 · 옵션 총합 표시
+
+1.45
+- 패치가 끝나면 완료 팝업 없이 게임을 바로 실행 (안 되는 기능이 있을 때만 경고)
+- 이전 게임 빌드(2026.1030.2)도 패치 가능
+
+1.44
+- 드롭 계산기(F3): 새 공포 단계 매찬 보너스(단계당 +3%, 40단계 넘으면 +2%)와 공포 유니크 배율 x1.9 자동 반영, 단계 입력 제한 14 → 200
+
+1.43
+- 게임 빌드 20261101.1 대응
+
+1.42
+- B로 창고 닫을 때 일시정지 메뉴가 뜨던 문제 수정 (창 닫기 기능을 직접 호출)
+
+1.41
+- B로 연 창고를 B로 닫기가 안 되던 문제 수정
+- 드롭 확률 계산기 (F3): 공포 단계 · 매직 찬스 · 몬스터 종류를 넣으면 룬워드 · 유니크별로 아이템 1개당 확률과 몇 개에 1번인지 (게임 공식과 데이터 그대로)
+
+1.40
+- B로 연 창고를 B로 다시 닫기 (1.41에서 D2 화면에서도 동작하게 수정)
+
+1.39
+- 비교 상자 위치 표시에 종류도 함께: 등록 · 방어구 · 방패 · ▲ … / 공용 창고 1 · 무기 · 양손 · 둔기 · ▲ …
+- Shift 비교 때 3개 제한 없이 전부
+
+1.38
+- 획득 목록 옵션 보기 창을 게임 툴팁과 같은 색으로 (이름은 등급 색, 일반 옵션 파랑 · 기본 수치 흰색 · 세트 초록 · 룬 금색 · 회색 설명 · 사용 불가 빨강)
+
+1.37
+- 아이템에 마우스를 올리고 Shift: 같은 이름 아이템 위치를 종류 상관없이 전부 게임 비교 상자로 표시 (등록 / 개인 창고 / 공용 창고 1~3 / 인벤)
+
+1.36
+- 배속 표시를 맨 위 줄 오른쪽 (FPS 왼쪽)으로, 시간 표시와 안 겹치게
+
+1.35
+- HUD 배치: 소환수 1줄 · 스킬 줄마다 1줄로 화면 맨 왼쪽 위, 게임 정보(단계·처치·골드·초당 피해)는 화면 맨 오른쪽 위 (선택 창에서 끄기 가능)
+- FPS 표시를 맨 위 줄 오른쪽 끝으로 (버전은 맨 위 줄 왼쪽)
+
+1.34
+- 획득 목록 줄을 짧게: (양손 석궁 · 등록본 양손 활) 처럼 손잡이·종류만 (자세한 건 마우스 올리면)
+
+1.33
+- 획득 목록을 화면 오른쪽에 두면 옵션 창이 목록 왼쪽에 뜨게 (자리가 모자라면 자동으로 반대쪽)
+
+1.32
+- 게임 업데이트 후 안 맞는 기능만 빼고 나머지는 적용, 안 되는 기능 목록을 알려 줌 (맨 위 줄에 "불가" 표시)
+- 게임 새 빌드가 준비되면 "설치하면 패치가 풀림 · 설치 후 bat 실행" 알림
+
+1.31
+- 룬워드 목록 · 설명서 창 제목과 검색칸을 스크롤해도 위에 고정
+- 룬워드 목록 옵션 한글 문장 표시 확인 (1.29)
+
+1.30
+- 업데이트 확인 · 완료 · 오류 창과 선택 창이 항상 맨 앞에 뜨게
+
+1.29
+- F4 룬워드 목록 옵션을 한글 문장으로 표시 (영문 이름으로 나오던 문제)
+
+1.28
+- 획득 목록 옵션 보기 창: 제목을 이름 · 부위 · 등록본 줄로 나눠 짧게, 폭 줄이고 줄바꿈
+- 옵션 보기 창 · 획득 목록 배경 더 투명하게
+
+1.27
+- 룬워드 검색칸에 커서가 있어도 F4로 닫기 (F키는 항상 동작)
+
+1.26
+- F4 룬워드 옵션이 [object Object]로 나오던 문제 수정 (룬 옵션 포함, 최소~최대)
+
+1.25
+- 획득 목록 마우스 휠로 위로 올려 지난 기록 보기 (안 되던 문제 수정)
+- 지난 기록 300줄 저장: 게임을 다시 켜도 이어서 보임
+
+1.24
+- 획득 목록 창: 위쪽 막대를 끌어서 이동, 오른쪽 아래 모서리로 크기 조절 (위치·크기 기억)
+
+1.23
+- F4 룬워드 목록이 안 열리던 문제 수정
+- 맨 위 줄과 선택 창에 게임 빌드 번호 표시
+
+1.22
+- cmd 창 없이 바로 GUI: 업데이트 확인 · 오류 · 완료를 모두 창으로 표시
+- 언어는 Windows 언어로 자동, 게임 폴더는 폴더 선택 창
+
+1.21
+- 획득 목록을 채팅창처럼: 화면 아래쪽, 스크롤로 지난 기록 보기 (최근 300개), 새 줄은 맨 아래
+- 각 줄 앞에 [월/일 시:분] 표시
+- [판매]는 이름만 짧게
+
+1.20
+- 설명서 F6, 룬워드 목록 F4 (고정 옵션 / 변하는 옵션 범위, 검색)
+- 맨 위 줄에 F6 · F4 · F10 단축키 항상 표시
+- 게임 안 업데이트 확인을 GitHub API로 (올리자마자 반영, 3분마다), 막히면 예비 주소로
+
+1.19
+- 적용 기능 한 줄을 화면 맨 위로, 색 구분 (적용 초록 / 안 함 빨강)
+
+1.18
+- 업데이트 알림이 떠 있을 때 더 새 버전이 나오면 알림도 최신 버전으로 바뀜
+
+1.17
+- 교체 창: 같은 종류 옵션끼리 짝지어 비교 (숫자만 다른 줄끼리), 없어진 옵션 · 새로 생긴 옵션 따로 표시
+- 룬워드 등록은 한손 무기 우선, 한손/양손 겸용 무기는 양손으로 보고 따로 보관
+
+1.16
+- 화면 맨 아래에 버전 · F10 · 적용 기능 한 줄 표시 (AFK 화면 위에도)
+- 획득 목록 폭(화면 %)을 선택 창에서 조절
+
+1.15
+- 화면 왼쪽 아래에 버전 · F10 패치 기록 안내
+- F10 창 맨 위와 패치 창에 적용 기능 한 줄 요약 (✓ 적용 / ✗ 안 함)
+- 획득 목록·교체 창 글자 크기를 화면 폭에 맞춤 (FHD 등), 선택 창에서 직접 지정 가능
+
+1.14
+- GitHub 사용 한도 초과로 업데이트가 안 받아지던 문제 수정
+- 게임 안 확인은 한도 없는 주소로 1분마다
+
+1.13
+- 선택 창 오른쪽에 패치 기록 표시
+- 게임 안 패치 기록 (F10)
+- 알림에서 패치하고 게임이 다시 켜지면 패치 창 자동으로 닫힘
+
+1.12
+- 알림에서 패치 후 게임 다시 켤 때 패치 창에 게임 기록이 찍히지 않게
+
+1.11
+- 스킬 붙은 매직 부적도 창고로 (매직 부적 스킬 옵션 인식 수정)
+- AFK 화면 위에도 업데이트 알림 표시
+
+1.10
+- 게임 안 업데이트 확인을 게임 본체에서 (알림 안 뜨던 문제 수정)
+
+1.09
+- 업데이트 확인 주기 2분
+
+1.08
+- FPS 표시 옆에 패치 버전 표시
+
+1.07
+- 업데이트 알림 클릭 → 게임 종료 → 패치 창 자동 실행 → 적용하면 게임 다시 실행
+
+1.06
+- 업데이트 확인 주기 30분 → 5분
+
+1.05
+- 교체 창: 이전 값 빨강 / 새 값 초록, 한 옵션 한 줄
+
+1.04
+- 게임 안 업데이트 알림은 패치할 때까지 계속 표시
+
+1.03
+- 클리어 후 자동 진행 방식: 같은 단계 계속 반복 / 한 단계씩 올라가기
+- 업데이트 받기 오류 수정
+
+1.02
+- 업데이트 확인을 GitHub API로 (예전 버전이 잘못 뜨던 문제)
+- 낮은 버전으로 덮어쓰지 않도록 막음
+
+1.01
+- 명암 조절 Home / End
+- 시체 숨김
+- FPS 표시 (F9), FPS 제한
+- 렌더링 해상도 조절
+
+1.00
+- 기능 선택 창: 체크한 기능만 적용, 조절값 저장
+- 밝기 조절 PageUp / PageDown
+- 스킬 붙은 부적은 창고로
+- 교체 창은 바뀐 옵션만, 획득 목록 줄에 마우스 올리면 옵션
+
+v1 ~ v5 (이전 번호)
+- bat 하나로 패치/복구, GitHub 자동 업데이트
+- 배속 (F7), AFK 화면에 배속·게임 시간 표시
+- 예전 버전 패치 위에 바로 덮어쓰기
+
+처음 버전
+- 자동 습득·등록·교체·판매, 룬워드 중복 정리
+- 획득 목록, 교체 창, 되돌리기, 툴팁 비교 상자, 숨겨진 값
+- 포털 자동 입장, 클리어 후 자동 재시작, 카운트다운
+- 창 열어도 안 멈춤, B 창고, Ctrl+클릭 창고로
+- AFK 모드 (F8), 최소화해도 안 멈춤
+- 순위표 전송 차단, 폰트 교체
+'@
 
 # 패치 GUI 의 보관 설정 탭: 게임이 저장한 keep-meta.json(메뉴 목록)과 keep.json(설정)을 표로 보여 주고, 바꾸면 keep.json 에 바로 저장 (게임은 다음에 켤 때 가져감)
 $KeepTab = { param($page)
@@ -639,11 +924,15 @@ if (-not $Action) {
     $bp.Controls.AddRange(@($bApply, $bRestore, $bClose, $bGit, $bBak, $bExp, $bImp))
     $row = New-Object Windows.Forms.FlowLayoutPanel; $row.AutoSize = $true; $row.WrapContents = $false
     $lg = New-Object Windows.Forms.TextBox; $lg.Multiline = $true; $lg.ReadOnly = $true; $lg.ScrollBars = 'Vertical'; $lg.BackColor = 'White'
-    $lg.Text = (T '패치 기록' 'Patch log') + "`r`n`r`n" + ($changelog -replace "`r?`n", "`r`n"); $lg.Margin = '16,0,0,0'
-    $row.Controls.Add($p); $row.Controls.Add($lg)
+    $lgw = New-Object Windows.Forms.Panel; $lgw.Margin = '16,0,0,0'; $lg.Top = 32
+    $lgS = { param($full) $lg.Text = (T '패치 기록' 'Patch log') + "`r`n`r`n" + ((@($changelog, $changelogFull)[[int]$full]) -replace "`r?`n", "`r`n"); $lgB1.ForeColor = @('Gold', 'Gray')[[int]$full]; $lgB2.ForeColor = @('Gray', 'Gold')[[int]$full] }
+    $lgB1 = New-Object Windows.Forms.Button; $lgB1.Text = T '간단히' 'Summary'; $lgB1.SetBounds(0, 0, 90, 28); $lgB1.Add_Click({ & $lgS $false })
+    $lgB2 = New-Object Windows.Forms.Button; $lgB2.Text = T '자세히' 'Details'; $lgB2.SetBounds(96, 0, 90, 28); $lgB2.Add_Click({ & $lgS $true })
+    $lgw.Controls.AddRange(@($lgB1, $lgB2, $lg)); & $lgS $false
+    $row.Controls.Add($p); $row.Controls.Add($lgw)
     foreach ($x in @($cbp, $np, $hk)) { $x.PerformLayout(); $x.Size = $x.PreferredSize; $x.Parent.PerformLayout() }
     $bw = [Math]::Max([Math]::Max($cbp.PreferredSize.Width, $np.PreferredSize.Width), $hk.PreferredSize.Width) + 34; foreach ($x in @($cbp, $np, $hk)) { $x.Parent.AutoSize = $false; $x.Parent.Size = New-Object Drawing.Size($bw, ($x.PreferredSize.Height + 46)); $x.AutoSize = $false; $x.Size = New-Object Drawing.Size(($bw - 30), $x.PreferredSize.Height) }; $p.PerformLayout()
-    $p.AutoSize = $false; $p.Size = $p.PreferredSize; $row.PerformLayout(); $lg.Size = New-Object Drawing.Size(412, $p.PreferredSize.Height)
+    $p.AutoSize = $false; $p.Size = $p.PreferredSize; $row.PerformLayout(); $lgw.Size = New-Object Drawing.Size(412, $p.PreferredSize.Height); $lg.Size = New-Object Drawing.Size(412, ($p.PreferredSize.Height - 32))
     $tc = New-Object Windows.Forms.Panel; $tc.Size = New-Object Drawing.Size(($row.PreferredSize.Width + 26), ($row.PreferredSize.Height + 70))
     $t1 = New-Object Windows.Forms.Panel; $t1.Controls.Add($row); $t1.Padding = 8; $t2 = New-Object Windows.Forms.Panel; $t2.Padding = 8; $t2.Visible = $false
     $tabs = New-Object Windows.Forms.FlowLayoutPanel; $tabs.Dock = 'Top'; $tabs.Height = 36; $tabs.WrapContents = $false
@@ -967,7 +1256,7 @@ $game = 'globalThis.__gupd=v=>{if(document.getElementById(`__gupd`))return;let d
 } catch { if ("$_" -notlike 'D2SUNSUP*') { throw }; $game, $keepText, $uiText, $mainText, $langText, $header = $snap }
 
 # 게임 안 패치 기록 (F10으로 열고 닫기)
-$game = 'globalThis.__plog=' + ($changelog | ConvertTo-Json) + ';document.addEventListener(`keydown`,e=>{if(e.code!==`F10`)return;e.preventDefault(),e.stopPropagation();let o=document.getElementById(`__plog`);if(o)return o.remove();o=document.createElement(`div`),o.id=`__plog`,o.style.cssText=`position:fixed;right:20px;top:60px;bottom:60px;width:440px;overflow:auto;z-index:10003;background:#000e;color:#ddd;border:1px solid #fc6;padding:10px 14px;font:14px sans-serif;line-height:1.5;white-space:pre-line`,o.textContent=`' + (T '패치 기록' 'Patch log') + ' v' + $Ver + ' (F10 ' + (T '닫기' 'close') + ')\n`+globalThis.__papp+`\n\n`+globalThis.__plog,document.body.append(o)},!0);setTimeout(()=>{let h=document.createElement(`div`);h.id=`__pbar`,h.style.cssText=`position:fixed;left:0;right:0;top:0;z-index:10000;background:#000b;color:#ccc;padding:2px 170px 2px 8px;font:12px sans-serif;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;pointer-events:none`,h.innerHTML=`<span style="color:#fc6;font-weight:bold">D2S v' + $Ver + '</span> <span style="color:#999">(' + (T '게임 빌드 ' 'build ') + $build + ')</span> · <span style="color:#8cf">F6 ' + (T '설명서' 'guide') + ' · F4 ' + (T '룬워드' 'runewords') + ' · F3 ' + (T '드롭 확률' 'drop odds') + ' · F2 ' + (T '보관 설정' 'keep') + ' · F10 ' + (T '패치 기록' 'patch log') + '</span> · `+globalThis.__papp.replace(/</g,`&lt;`).replace(/\u2713([^ ·|]+)/g,`<span style="color:#7e7">\u2713$1</span>`).replace(/\u2717([^ ·|]+)/g,`<span style="color:#f77">\u2717$1</span>`),document.body.append(h)},3e3);' + $game
+$game = 'globalThis.__plog=' + ($changelog | ConvertTo-Json) + ';globalThis.__plogF=' + ($changelogFull | ConvertTo-Json) + ';document.addEventListener(`keydown`,e=>{if(e.code!==`F10`)return;e.preventDefault(),e.stopPropagation();let o=document.getElementById(`__plog`);if(o)return o.remove();o=document.createElement(`div`),o.id=`__plog`,o.style.cssText=`position:fixed;right:20px;top:60px;bottom:60px;width:440px;overflow:auto;z-index:10003;background:#000e;color:#ddd;border:1px solid #fc6;padding:10px 14px;font:14px sans-serif;line-height:1.5;white-space:pre-line`,o.innerHTML=`<div style="position:sticky;top:-10px;margin:-10px -14px 6px;padding:10px 14px 6px;background:#000;border-bottom:1px solid #333;white-space:normal">' + (T '패치 기록' 'Patch log') + ' v' + $Ver + ' (F10 ' + (T '닫기' 'close') + ')<button data-pl=0 style="background:#2a2015;border:1px solid #8a6d3b;padding:2px 10px;margin-left:6px;cursor:pointer">' + (T '간단히' 'Summary') + '</button><button data-pl=1 style="background:#2a2015;border:1px solid #8a6d3b;padding:2px 10px;margin-left:6px;cursor:pointer">' + (T '자세히' 'Details') + '</button></div><div></div>`;let w=o.lastChild,S=d=>{w.textContent=globalThis.__papp+`\n\n`+(d?globalThis.__plogF:globalThis.__plog),o.querySelectorAll(`[data-pl]`).forEach(b=>b.style.color=+b.dataset.pl===d?`#fc6`:`#888`)};o.onclick=e=>{let d=e.target.dataset?.pl;d!=null&&S(+d)};S(0),document.body.append(o)},!0);setTimeout(()=>{let h=document.createElement(`div`);h.id=`__pbar`,h.style.cssText=`position:fixed;left:0;right:0;top:0;z-index:10000;background:#000b;color:#ccc;padding:2px 170px 2px 8px;font:12px sans-serif;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;pointer-events:none`,h.innerHTML=`<span style="color:#fc6;font-weight:bold">D2S v' + $Ver + '</span> <span style="color:#999">(' + (T '게임 빌드 ' 'build ') + $build + ')</span> · <span style="color:#8cf">F6 ' + (T '설명서' 'guide') + ' · F4 ' + (T '룬워드' 'runewords') + ' · F3 ' + (T '드롭 확률' 'drop odds') + ' · F2 ' + (T '보관 설정' 'keep') + ' · F10 ' + (T '패치 기록' 'patch log') + '</span> · `+globalThis.__papp.replace(/</g,`&lt;`).replace(/\u2713([^ ·|]+)/g,`<span style="color:#7e7">\u2713$1</span>`).replace(/\u2717([^ ·|]+)/g,`<span style="color:#f77">\u2717$1</span>`),document.body.append(h)},3e3);' + $game
 $game = 'globalThis.__papp=' + ($applied | ConvertTo-Json) + ';' + $game
 
 # 패치 버전 표시: 다음 실행 때 예전 버전인지 판단용
