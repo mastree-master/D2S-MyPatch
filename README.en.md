@@ -6,6 +6,7 @@
 
 <!-- notes -->
 ### Latest changes v1.63
+- 창고 정리 (F5 창): 개인 · 공유 1 · 2 · 3 중 체크한 탭을 합쳐 종류별 / 같은 아이템끼리 / 등급별 / 크기순으로 다시 배치, [되돌리기]. 창고 · 캐릭터 · 상점 화면이 열려 있으면 거부, 정리 전후 아이템을 비교해 하나라도 다르면 원래대로 둠
 - 툴팁 맨 아래에 F2 판정 한 줄: 이 아이템을 주우면 보관함 등록 / 교체 / 인벤 / 창고 / 판매 중 어디로 가는지와 이유 (어떤 옵션이 기준을 넘었는지). F5에서 끄기 가능
 - F5 창에 조절값: 클리어 후 같은 단계 / 다음 단계, 자동 진행 대기(초), 밝기 · 명암. 바로 적용, 패치 창과 연동
 - 단축키 바꾸기 (F5 창): F1 ~ F10, B. 바꾼 뒤 원래 키는 안 먹힘, Delete로 원래대로
@@ -134,7 +135,7 @@ Every runeword read from the game data: runes · level · item types, **fixed st
 | F3 | Drop chance calculator |
 | F1 | Loot · sales stats (this session / today) |
 | F2 | Keep settings (sell / bag / stash per item, registered count) |
-| F5 | Features on · off · settings · hotkeys |
+| F5 | Features on · off · settings · stash sort · hotkeys |
 | F10 | Patch log |
 | F7 | Game speed |
 | F8 | AFK mode |
