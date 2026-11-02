@@ -6,6 +6,7 @@
 
 <!-- notes -->
 ### Latest changes v1.61
+- AFK 중에는 F키 말고 다른 키가 게임에 안 넘어감 (I · C · B 등이 눌려 인벤 창이 열리고 게임이 멈추던 문제)
 - AFK 화면에 "티리엘 나오면 정지" 체크 (기본 꺼짐): 켜면 티리엘 등장(파편 10개 + 5막 보스 처치) 때 포털 자동 입장 안 함, 소리, AFK 중이면 자동 정지
 
 <details><summary>Earlier changes (expand)</summary>
