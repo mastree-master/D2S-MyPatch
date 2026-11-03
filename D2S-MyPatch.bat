@@ -1380,10 +1380,10 @@ if ($O.pickup) {
 $snap = @($game, $keepText, $uiText, $mainText, $langText, $header); try {
 # 떨어진 아이템은 거리와 상관없이 즉시 처리한다 (원래는 몸에 닿아야 주움)
 # 게임 아이템 필터(숨김·판매·보관)는 쓰지 않는다. 모든 아이템을 바로 줍고, 등록·교체 외에는 F2 보관 설정대로 판매/인벤/창고
-# 그 밖의 아이템(등록된 유니크 포함)은 바로 판매한다. 퀘스트 아이템·부적은 인벤토리로
+# 그 밖의 아이템(등록된 유니크 포함)은 바로 판매한다. 퀘스트 아이템·부적·라주크의 정수(겹침)는 인벤토리로
 $quest = (Find $keepText ('=(' + $id + ')\(t\)\?' + $id + '\(' + $id + '\(t\.name\),`red`\)') 'quest item').Groups[1].Value
 $reach = Find $keepText ('let t=n\.radius\+(' + $id + '),i=e\.reaching===r;if\(i&&c<t&&\(r\.dropped=!1\),r\.loot===`hide`&&!i\)continue;let a=r\.loot===`sell`&&!!e\.sell;') 'pickup radius'
-$keepText = Swap $keepText $reach.Value ('let __pk=globalThis.__on?.(`pickup`)!==!1,__nw=e.isNew?.(r.item),t=__pk?1/0:n.radius+' + $reach.Groups[1].Value + ',i=e.reaching===r;if(i&&c<t&&(r.dropped=!1),!__pk&&r.loot===`hide`&&!i)continue;let a=__pk?!__nw&&(!' + $quest + '(r.item)||r.item.base===`hcx`)&&r.item.type!==`charm`&&!!e.sell:r.loot===`sell`&&!!e.sell;') 'pickup radius'
+$keepText = Swap $keepText $reach.Value ('let __pk=globalThis.__on?.(`pickup`)!==!1,__nw=e.isNew?.(r.item),t=__pk?1/0:n.radius+' + $reach.Groups[1].Value + ',i=e.reaching===r;if(i&&c<t&&(r.dropped=!1),!__pk&&r.loot===`hide`&&!i)continue;let a=__pk?!__nw&&(!' + $quest + '(r.item)||r.item.base===`hcx`)&&r.item.type!==`charm`&&r.item.type!==`essence`&&!!e.sell:r.loot===`sell`&&!!e.sell;') 'pickup radius'
 } catch { if ("$_" -notlike 'D2SUNSUP*') { throw }; $game, $keepText, $uiText, $mainText, $langText, $header = $snap; $bad += 'pickup' } }
 if ($O.goldchest) {
 $snap = @($game, $keepText, $uiText, $mainText, $langText, $header); try {
