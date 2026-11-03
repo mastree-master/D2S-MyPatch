@@ -56,7 +56,7 @@ if (-not (Test-Path $asar)) {
 $backup = "$asar.orig"
 
 # 업데이트 확인: GitHub의 version.txt가 더 크면 새 bat를 받아 자기 자신을 바꾸고 다시 실행
-$Ver = '1.65'
+$Ver = '1.66'
 $Repo = 'mastree-master/D2S-MyPatch'
 # raw.githubusercontent는 몇 분씩 예전 파일을 내주므로 캐시 없는 GitHub API로 받는다
 $raw = "https://api.github.com/repos/$Repo/contents"
@@ -164,6 +164,10 @@ $pv = if ($game -match 'globalThis\.__d2sv=([\d.]+);') { $Matches[1] } else { ''
 
 # 패치 기록 (선택 창 오른쪽에 표시). 새 버전은 맨 위에 추가
 $changelog = @'
+1.66
+■ 수정
+- 게임 2026.1103.1 업데이트에 맞췄습니다. (파일 이름이 바뀌어 패치가 안 되던 문제, 자동 등록 · 꽉 차면 창고가 빠지던 문제)
+
 1.65
 ■ 새 기능
 - F2 보관 설정에 "그리고" 조건을 추가했습니다. 옵션 줄의 [+]로 함께 붙어 있어야 할 옵션을 최대 2개까지 고를 수 있습니다. (예: 거대 부적 스킬 + 생명력 30 이상만 창고)
