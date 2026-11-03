@@ -121,10 +121,22 @@ function Entry($prefix) {
     $m[0]
 }
 function ReadFile($e) { $utf8.GetString($bytes, $dataStart + [long]$e.Groups[3].Value, [int]$e.Groups[2].Value) }
+# 파일 이름은 업데이트마다 바뀌므로 먼저 내용(고유 문자열)으로 찾고, 못 찾으면 이름으로 찾는다
+function EntryHas($marker) {
+    $hit = @([regex]::Matches($header, '"([A-Za-z0-9_]+-[A-Za-z0-9_-]{8}\.js)":\{"size":(\d+),"offset":"(\d+)","integrity":\{[^{}]*\}\}') | Where-Object { (ReadFile $_).Contains($marker) })
+    if ($hit.Count -eq 1) { $hit[0] } else { $null }
+}
+function PickEntries {
+    $script:gameEntry = EntryHas 'carry(e){let t=this.inventoryOf'; if (-not $script:gameEntry) { $script:gameEntry = Entry 'Game' }
+    $script:keepEntry = EntryHas '=[`personal`,...'
+    if (-not $script:keepEntry) { $script:keepEntry = if ($header -match '"moved-[A-Za-z0-9_-]{8}\.js"') { Entry 'moved' } else { Entry 'saveTransfer' } }
+    $script:uiEntry = EntryHas 'static initial(e,t,n={width:innerWidth'
+    if (-not $script:uiEntry -or $script:uiEntry.Value -eq $script:keepEntry.Value -or $script:uiEntry.Value -eq $script:gameEntry.Value) {
+        $script:uiEntry = if ($script:keepEntry.Groups[1].Value -like 'moved-*') { Entry 'saveTransfer' } elseif ($header -match '"leaderboardSend-[A-Za-z0-9_-]{8}\.js"') { Entry 'leaderboardSend' } else { Entry 'report' }
+    }
+}
 
-$gameEntry = Entry 'Game'
-$keepEntry = if ($header -match '"moved-[A-Za-z0-9_-]{8}\.js"') { Entry 'moved' } else { Entry 'saveTransfer' }
-$uiEntry = if ($keepEntry.Groups[1].Value -like 'moved-*') { Entry 'saveTransfer' } else { if ($header -match '"leaderboardSend-[A-Za-z0-9_-]{8}.js"') { Entry 'leaderboardSend' } else { Entry 'report' } }
+PickEntries
 $game = ReadFile $gameEntry
 $build = try { $pj = ($header | ConvertFrom-Json).files.'package.json'; ($utf8.GetString($bytes, $dataStart + [long]$pj.offset, [int]$pj.size) | ConvertFrom-Json).version } catch { '?' }
 $patched = $game.Contains('isNew:e=>')
@@ -1102,9 +1114,7 @@ if ($patched) {
     $jsonLen = [BitConverter]::ToUInt32($bytes, 12)
     $header = $utf8.GetString($bytes, 16, $jsonLen)
     $dataStart = 8 + $headerSize
-    $gameEntry = Entry 'Game'
-    $keepEntry = if ($header -match '"moved-[A-Za-z0-9_-]{8}\.js"') { Entry 'moved' } else { Entry 'saveTransfer' }
-    $uiEntry = if ($keepEntry.Groups[1].Value -like 'moved-*') { Entry 'saveTransfer' } else { if ($header -match '"leaderboardSend-[A-Za-z0-9_-]{8}.js"') { Entry 'leaderboardSend' } else { Entry 'report' } }
+    PickEntries
     $game = ReadFile $gameEntry
     $fromBackup = $true
 }
@@ -1390,7 +1400,8 @@ $snap = @($game, $keepText, $uiText, $mainText, $langText, $header); try {
 $tip = (Find $keepText ('function (' + $id + ')\(e,t,n=1,r,i=\{\},a\)\{if\(') 'tooltip').Groups[1].Value
 $bases = (Find $keepText ('(' + $id + ')=new Map\((' + $id + ')\.map\(e=>\[e\.name,e\]\)\),' + $id + '=\2\.filter\(e=>e\.type===`charm`\)') 'bases').Groups[1].Value
 $cats = (Find $keepText ('(' + $id + ')=\[\[`head`,`Helms`\]') 'categories').Groups[1].Value
-$tr = (Find $keepText ('import\{[^}]*\bd as (' + $id + ')[^}]*\}from"\./lang-') 'translate').Groups[1].Value
+$langEntry = EntryHas 'U+1100-11FF, U+3130-318F'; if (-not $langEntry) { $langEntry = Entry 'lang' }
+$tr = (Find $keepText ('import\{[^}]*\bd as (' + $id + ')[^}]*\}from"\./' + [regex]::Escape($langEntry.Groups[1].Value)) 'translate').Groups[1].Value
 $rwR = (Find $keepText ('function ' + $id + '\(e\)\{let t=(' + $id + ')\?\.runewords\?\.\[e\];return!!t&&') 'runeword data').Groups[1].Value
 $rwRoll = (Find $keepText ('function (' + $id + ')\(e,t\)\{return ' + $id + '\(e\.props\.flatMap\(\(\{stats:e,min:n,max:r\}\)') 'runeword roll').Groups[1].Value
 $rwList = (Find $keepText ('lvl:a\}\},(' + $id + ')=\[' + $id + '\(') 'runeword list').Groups[1].Value
@@ -1413,7 +1424,6 @@ $game = 'globalThis.__dropHtml=(T,M,X)=>{let D=globalThis.__drop?.();if(!D?.R?.r
 } catch { if ("$_" -notlike 'D2SUNSUP*') { throw }; $game, $keepText, $uiText, $mainText, $langText, $header = $snap; $bad += 'dropcalc' }
 $keepText += ";globalThis.__tip=e=>{let f=x=>$tip(x).lines.map(l=>$tr(l.text));e={mods:[],...e};try{return f(e)}catch{try{return f({...e,rarity:`unique`})}catch{return[]}}};globalThis.__tipc=e=>{try{return $tip(e).lines.map(l=>({t:$tr(l.text),c:l.unusable?``#ff5050``:l.inert?``#9a9a9a``:l.tone===``set``?``#0f0``:l.tone===``gold``?``#c7b377``:l.implicit?``#fff``:``#6969ff``}))}catch{return[]}};globalThis.__rcol=r=>({unique:``#c7b377``,runeword:``#c7b377``,set:``#0f0``,magic:``#6969ff``,rare:``#ffff64``})[r]??``#fff``;globalThis.__kd=e=>{let o=$bases.get(e.base);return o?.type===``weapon``?o.kind+(o.twoHand?2:1):o?.type};globalThis.__bsz=e=>$bases.get(e.base)?.size;globalThis.__slot=e=>{let o=$bases.get(e.base),w=o?.type===``weapon``,c=w?o.kind:o?.type,n=$cats.find(x=>x[0]===c)?.[1],g=!o?null:w?``$(T '무기' 'Weapon')``:c===``ring``||c===``amulet``?``$(T '장신구' 'Jewelry')``:c===``charm``?null:``$(T '방어구' 'Armor')``,h=w?(o.oneHand&&o.twoHand?``$(T '한손/양손' '1H/2H')``:o.twoHand?``$(T '양손' '2H')``:``$(T '한손' '1H')``):null;return[{unique:``$(T '유니크' 'Unique')``,set:``$(T '세트' 'Set')``,runeword:``$(T '룬워드' 'Runeword')``}[e.rarity],g,h,n&&$tr(n),o&&$tr(e.base)].filter(Boolean).join(``` · ``)};"
 # kodia.ttf가 있으면 숫자·영문·기호도 디아2 그림 글꼴 대신 그 폰트로 그린다 (공백 제외 전부)
-$langEntry = Entry 'lang'
 $langText = ReadFile $langEntry
 if ($O.font) {
 $snap = @($game, $keepText, $uiText, $mainText, $langText, $header); try {
