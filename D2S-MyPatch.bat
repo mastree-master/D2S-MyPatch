@@ -191,6 +191,7 @@ $changelog = @'
 ■ 수정
 - 즉시 습득이 새 아이템 라주크의 정수(겹침)를 팔지 않고 인벤토리로 넣습니다.
 - 게임 2026.1103.1 업데이트에 맞췄습니다. (파일 이름이 바뀌어 패치가 안 되던 문제, 자동 등록 · 꽉 차면 창고가 빠지던 문제)
+- 패치 창 · 게임 안 설명서(F6) 단축키에 Alt+클릭(잠금) · 우클릭([판매] 줄 보관 설정)을 넣고, 패치 창 위쪽에 자동 재패치 결과를 표시합니다.
 - [판매] 줄 비교 창의 제목과 이름을 "등록본과 다른 옵션" · "등록본 / 판매한 것"으로 바로잡았습니다.
 
 1.65
@@ -957,6 +958,8 @@ if (-not $Action) {
     $st = New-Object Windows.Forms.Label; $st.AutoSize = $true; $st.ForeColor = 'DarkBlue'
     $st.Text = if (-not $patched) { T '현재: 원본' 'Current: original' } elseif ($pv -eq $Ver) { T "현재: 패치 v$pv" "Current: patched v$pv" } else { T "현재: 예전 패치 ($pv) → 새 버전 v$Ver 로 덮어쓰기 가능" "Current: older patch ($pv) → can re-patch v$Ver" }
     if ($patched) { try { $lj = Get-Content (Join-Path (Split-Path $optFile) 'last.json') -Raw -Encoding UTF8 | ConvertFrom-Json; $st.Text += '   ·   ' + (T "마지막 패치 $($lj.t) · 기능 $($lj.on)/$($lj.all)개 적용 · " "Last patch $($lj.t) · $($lj.on)/$($lj.all) features · ") + $(if (@($lj.bad).Count) { (T '안 된 기능: ' 'failed: ') + (@($lj.bad) -join ', ') } else { T '실패 없음' 'no failures' }) } catch {} }
+    # 업데이트 뒤 자동 재패치의 마지막 결과 (afterupdate.log 마지막 줄: 시각 OK|FAIL 내용)
+    try { $al = @(Get-Content (Join-Path (Split-Path $optFile) 'afterupdate.log') -Encoding UTF8 | Where-Object { $_ })[-1]; if ($al -match '^(\S+ \S+) (OK|FAIL)') { $st.Text += '   ·   ' + (T '자동 재패치 ' 'Auto re-patch ') + $Matches[1] + ' ' + $(if ($Matches[2] -eq 'OK') { T '성공' 'OK' } else { T '실패' 'failed' }) } } catch {}
     $p.Controls.Add($st)
     function Box($title, $h) {
         $gb = New-Object Windows.Forms.Panel; $gb.Tag = $title; $gb.AutoSize = $true; $gb.AutoSizeMode = 'GrowAndShrink'; $gb.Padding = '10,34,12,10'; $gb.Margin = '0,8,0,0'
@@ -992,7 +995,7 @@ if (-not $Action) {
     $cMode.SelectedIndex = [int]($O.automode -eq 'next')
     $mr.Controls.Add($ml); $mr.Controls.Add($cMode); $np.Controls.Add($mr)
     $hk = Box (T '인게임 단축키' 'In-game hotkeys') 172
-    foreach ($x in @(@('F1', (T '획득 · 판매 통계' 'Loot stats')), @('F2', (T '보관 설정' 'Keep settings')), @('F5', (T '기능 켜기 · 끄기' 'Features on · off')), @('F3', (T '드롭 확률' 'Drop odds')), @('F4', (T '룬워드 목록' 'Runewords')), @('F6', (T '설명서' 'Guide')), @('F7', (T '배속' 'Speed')), @('F8', (T 'AFK 모드' 'AFK mode')), @('F9', (T 'FPS 표시' 'FPS')), @('F10', (T '패치 기록' 'Patch log')), @('B', (T '창고 열기 · 닫기' 'Stash')), @('Ctrl+Click', (T '창고로 보내기' 'To stash')), @('Shift', (T '같은 아이템 위치 전부' 'All copies')), @('PgUp/PgDn', (T '밝기' 'Brightness')), @('Home/End', (T '명암' 'Contrast')))) {
+    foreach ($x in @(@('F1', (T '획득 · 판매 통계' 'Loot stats')), @('F2', (T '보관 설정' 'Keep settings')), @('F5', (T '기능 켜기 · 끄기' 'Features on · off')), @('F3', (T '드롭 확률' 'Drop odds')), @('F4', (T '룬워드 목록' 'Runewords')), @('F6', (T '설명서' 'Guide')), @('F7', (T '배속' 'Speed')), @('F8', (T 'AFK 모드' 'AFK mode')), @('F9', (T 'FPS 표시' 'FPS')), @('F10', (T '패치 기록' 'Patch log')), @('B', (T '창고 열기 · 닫기' 'Stash')), @('Ctrl+Click', (T '창고로 보내기' 'To stash')), @('Alt+Click', (T '아이템 잠금' 'Lock item')), @('R-Click', (T '[판매] 줄 → 보관 설정' '[sold] line → keep')), @('Shift', (T '같은 아이템 위치 전부' 'All copies')), @('PgUp/PgDn', (T '밝기' 'Brightness')), @('Home/End', (T '명암' 'Contrast')))) {
         $hr = New-Object Windows.Forms.FlowLayoutPanel; $hr.AutoSize = $true; $hr.WrapContents = $false; $hr.Margin = '3,2,18,2'
         $kl = New-Object Windows.Forms.Label; $kl.Text = $x[0]; $kl.AutoSize = $false; $kl.Size = New-Object Drawing.Size(92, 24); $kl.TextAlign = 'MiddleCenter'; $kl.Font = New-Object Drawing.Font('Consolas', 10, [Drawing.FontStyle]::Bold); $kl.Tag = 'key'
         $kl.Add_Paint({ param($s, $e) $e.Graphics.DrawRectangle((New-Object Drawing.Pen([Drawing.Color]::FromArgb(150, 118, 64))), 0, 0, $s.Width - 1, $s.Height - 1) })
@@ -1316,6 +1319,8 @@ F8  AFK 모드 (검은 화면 + 진행 상황, 자동 정지 · 기록 이어가
 F9  FPS · 버전 표시
 B   창고 열기 (런 중, 마을)
 Ctrl+클릭  인벤토리 아이템을 창고로
+Alt+클릭  아이템 잠금 (창고 정리 · 자동 교체에서 빠짐)
+우클릭  획득 목록 [판매] 줄 → 그 아이템 보관 설정(F2) 열기
 PageUp / PageDown  밝기,  Home / End  명암
 
 [아이템 자동 처리]
