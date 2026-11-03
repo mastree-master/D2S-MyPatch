@@ -172,6 +172,7 @@ $feat = [ordered]@{
     shard = T '빛의 파편 위치 안내 (퀘스트: 부서진 빛)' 'Light shard locator (quest: Shattered Light)'
     tyrael = T '티리엘 등장 시 자동 진행 정지 (날개 수령용, 기본 꺼짐)' 'Stop auto-continue at Tyrael (wings, off by default)'
     font = T '글꼴 교체 (kodia.ttf 필요, 재시작 필요)' 'Replace font (needs kodia.ttf, restart required)'
+    watch = T '업데이트 감시 (작업 스케줄러, 5분마다 확인해 업데이트로 원본이 되면 자동 재패치)' 'Update watch (Task Scheduler, re-patch within 5 min after a game update)'
 }
 $O = @{ logw = 32; logsize = 0; automode = 'same'; delay = 4; brightness = 100; contrast = 100; logn = 15; res = 0; fpscap = 0 }
 foreach ($k in $feat.Keys) { $O[$k] = $true }
@@ -188,6 +189,7 @@ $changelog = @'
 - 게임 파일을 이름이 아니라 내용으로 찾습니다. 업데이트에서 파일 이름만 바뀌면 그대로 패치됩니다.
 - 업데이트 뒤 자동 재패치가 실패하면 "지금 원본 상태" 경고를 띄우고 결과를 afterupdate.log에 남깁니다.
 - 패치 상태로 켤 때마다 보내지 못한 순위표 기록 대기열을 비웁니다. (나중에 원본 상태에서 올라가지 않게)
+- 업데이트 감시를 추가했습니다. (패치 창 기능, 기본 켜짐) 윈도우 작업 스케줄러가 5분마다 확인해, 게임이 강제 종료 · 설치 후 바로 실행 등으로 정상 종료 없이 업데이트돼도 알아서 재패치합니다. 게임이 켜져 있었으면 끄고 재패치한 뒤 다시 켜고, 꺼져 있었으면 켜지 않습니다. "원본으로 복구"한 상태는 건드리지 않습니다.
 ■ 수정
 - 즉시 습득이 새 아이템 라주크의 정수(겹침)를 팔지 않고 인벤토리로 넣습니다. F2 기타에서 판매 / 인벤 / 창고를 고를 수 있습니다.
 - 게임 2026.1103.1 업데이트에 맞췄습니다. (파일 이름이 바뀌어 패치가 안 되던 문제, 자동 등록 · 꽉 차면 창고가 빠지던 문제)
@@ -1108,7 +1110,7 @@ if (-not $Action) {
 if (-not $hasFont) { $O.font = $false }
 $on = $feat.Keys | Where-Object { $O[$_] } | ForEach-Object { $feat[$_] }
 $beep = 'globalThis.__ps=(()=>{try{return JSON.parse(localStorage.getItem(`d2s:pset`)||`{}`)}catch{return{}}})();globalThis.__sndP=[[1047,1568],[880],[523,392],[1319],[660,880,1100]];globalThis.__sndD={stash:0,inv:1,shard:0,tyrael:0,stop:2,full:2};globalThis.__toast=(m,w)=>{let d=document.createElement(`div`);d.textContent=m,d.style.cssText=`position:fixed;left:50%;top:80px;transform:translateX(-50%);z-index:10006;background:#000d;color:${w?`#f88`:`#fc6`};border:1px solid #8a6d3b;padding:6px 14px;font:15px sans-serif;pointer-events:none`,document.body.append(d),setTimeout(()=>d.remove(),4e3)};globalThis.__ntf=m=>{try{(globalThis.__ps.ntf??!0)&&(document.hidden||!document.hasFocus())&&new Notification(`D2 Survivors`,{body:m,silent:!0})}catch{}};globalThis.__beep=(t,k)=>{try{let S=globalThis.__ps,p=k?S.ev?.[k]??__sndD[k]:t;if(p<0)return;let a=globalThis.__ac??=new AudioContext,n=a.currentTime,V=.1*(S.vol??80)/100;(__sndP[p]??[880]).forEach((f,i)=>{let o=a.createOscillator(),v=a.createGain(),q=n+i*.13;o.type=`triangle`,o.frequency.value=f,v.gain.setValueAtTime(0,q),v.gain.linearRampToValueAtTime(V,q+.01),v.gain.exponentialRampToValueAtTime(.001,q+.4),o.connect(v).connect(a.destination),o.start(q),o.stop(q+.45)})}catch{}};'
-$short = [ordered]@{ carry = T '자동등록' 'stash'; pickup = T '즉시습득' 'pickup'; goldchest = T '골드상자' 'gold'; overflow = T '꽉차면창고' 'overflow'; log = T '획득목록' 'log'; swpop = T '교체창' 'swap'; twins = T '비교상자' 'compare'; hidden = T '숨은값' 'hidden'; auto = T '자동진행' 'auto'; nopause = T '창안멈춤' 'nopause'; stash = T 'B창고' 'Bstash'; afk = 'AFK'; speed = T '배속' 'speed'; bright = T '밝기명암' 'bright'; hud = T 'HUD배치' 'hud'; corpse = T '시체숨김' 'corpse'; fps = 'FPS'; dropsnd = T '드롭소리' 'dropsound'; shard = T '파편안내' 'shard'; tyrael = T '티리엘멈춤' 'tyrael'; stats = T '통계' 'stats'; f2tip = T 'F2판정' 'f2tip'; font = T '폰트' 'font' }
+$short = [ordered]@{ carry = T '자동등록' 'stash'; pickup = T '즉시습득' 'pickup'; goldchest = T '골드상자' 'gold'; overflow = T '꽉차면창고' 'overflow'; log = T '획득목록' 'log'; swpop = T '교체창' 'swap'; twins = T '비교상자' 'compare'; hidden = T '숨은값' 'hidden'; auto = T '자동진행' 'auto'; nopause = T '창안멈춤' 'nopause'; stash = T 'B창고' 'Bstash'; afk = 'AFK'; speed = T '배속' 'speed'; bright = T '밝기명암' 'bright'; hud = T 'HUD배치' 'hud'; corpse = T '시체숨김' 'corpse'; fps = 'FPS'; dropsnd = T '드롭소리' 'dropsound'; shard = T '파편안내' 'shard'; tyrael = T '티리엘멈춤' 'tyrael'; stats = T '통계' 'stats'; f2tip = T 'F2판정' 'f2tip'; font = T '폰트' 'font'; watch = T '감시' 'watch' }
 $live = @($feat.Keys | Where-Object { $_ -ne 'font' })
 $On = @{}; foreach ($k in $feat.Keys) { $On[$k] = [bool]$O[$k] }
 function MkApplied { (($short.Keys | ForEach-Object { $(if ($On[$_]) { [char]0x2713 } else { [char]0x2717 }) + $short[$_] }) -join ' · ') + ' | ' + $(if ($O.auto) { $(if ($O.automode -eq 'next') { T '다음 단계' 'next tier' } else { T '같은 단계' 'same tier' }) + " $($O.delay)" + (T '초' 's') + ' · ' } else { '' }) + (T '해상도 ' 'res ') + $(if ([int]$O.res -gt 0) { "$($O.res)%" } else { T '자동' 'auto' }) + ' · ' + (T 'FPS 제한 ' 'FPS cap ') + $(if ([int]$O.fpscap -gt 0) { $O.fpscap } else { T '없음' 'none' }) }
@@ -1556,9 +1558,25 @@ $w.Flush()
 if (-not $fromBackup) { Copy-Item $asar $backup -Force }
 [IO.File]::WriteAllBytes($asar, $out.ToArray())
 try { @{ t = (Get-Date).ToString('yyyy-MM-dd HH:mm'); ver = $Ver; build = $build; on = @($feat.Keys | Where-Object { $On[$_] }).Count; all = $feat.Count; bad = @($bad | ForEach-Object { $feat[$_] }) } | ConvertTo-Json | Set-Content (Join-Path (Split-Path $optFile) 'last.json') -Encoding UTF8 } catch {}
+# 업데이트 감시: 게임이 정상 종료 없이 업데이트돼도(강제 종료 · 설치 후 바로 실행) 5분 안에 재패치한다
+# 조건: app.asar 가 app.asar.sha256 과 같고(원본), sha256 파일이 마지막 패치(last.json)와 마지막 자동 재패치 기록보다 새로울 때만 (원본으로 복구는 sha256 을 안 바꾸므로 그대로 둔다)
+if ($env:D2SF) { try {
+    $wd = Split-Path $optFile; $wp = Join-Path $wd 'watch.ps1'; $wv = Join-Path $wd 'watch.vbs'
+    if ($O.watch) {
+        $ws = @(("`$g = '" + $GameDir.Replace("'", "''") + "'; `$b = '" + $env:D2SF.Replace("'", "''") + "'"), '$d = Split-Path $MyInvocation.MyCommand.Path; $h = Join-Path $g ''resources\app.asar.sha256''; $a = Join-Path $g ''resources\app.asar''',
+            'if (-not (Test-Path $h) -or -not (Test-Path $b)) { exit }; $t = (Get-Item $h).LastWriteTime',
+            'foreach ($x in ''last.json'', ''afterupdate.log'') { $p = Join-Path $d $x; if ((Test-Path $p) -and (Get-Item $p).LastWriteTime -gt $t) { exit } }',
+            'try { if ((Get-FileHash $a -Algorithm SHA256).Hash -ne (Get-Content $h -Raw).Trim()) { exit } } catch { exit }',
+            '$env:D2S_AFTERUPDATE = ''1''; if (-not (Get-Process -Name ''D2 Survivors'' -ErrorAction SilentlyContinue)) { $env:D2S_NORUN = ''1'' }',
+            'Start-Process cmd.exe -ArgumentList (''/c start "" "'' + $b + ''"'')') -join "`r`n"
+        [IO.File]::WriteAllText($wp, $ws, (New-Object Text.UTF8Encoding($true)))
+        [IO.File]::WriteAllText($wv, 'CreateObject("WScript.Shell").Run "powershell -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File ""' + $wp + '""", 0, False')
+        [void](schtasks.exe /Create /F /SC MINUTE /MO 5 /TN 'D2S-MyPatch-Watch' /TR ('wscript.exe "' + $wv + '"') 2>&1)
+    } else { [void](schtasks.exe /Delete /F /TN 'D2S-MyPatch-Watch' 2>&1); Remove-Item $wp, $wv -ErrorAction SilentlyContinue }
+} catch {} }
 Write-Host (T '  [OK] 패치 완료. 게임을 실행하세요.' '  [OK] Patched. Start the game.') -ForegroundColor Green
 Write-Host "  $applied"
 # 패치가 끝나면 게임을 바로 켠다 (explorer로 켜야 게임 로그가 이 창에 안 찍힘)
 if (($env:D2S_RELAUNCH -or $gui) -and $bad.Count) { [void](Msg ((T '이 게임 버전에서 안 되는 기능 (패치 수정 필요): ' 'Not working on this game version: ') + (($bad | ForEach-Object { $feat[$_] }) -join ', ')) 'Warning') }
-if ($env:D2S_RELAUNCH -or $gui) { Start-Process explorer.exe ('"' + (Join-Path $GameDir 'D2 Survivors.exe') + '"') }
+if (($env:D2S_RELAUNCH -or $gui) -and -not $env:D2S_NORUN) { Start-Process explorer.exe ('"' + (Join-Path $GameDir 'D2 Survivors.exe') + '"') }
 Done 0
