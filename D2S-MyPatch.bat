@@ -105,11 +105,13 @@ if ($env:D2S_AFTERUPDATE) {
     Get-Process -Name 'D2 Survivors' -ErrorAction SilentlyContinue | Stop-Process -Force
     Start-Sleep -Seconds 2
 }
-for ($i = 0; $i -lt 30 -and (Get-Process -Name 'D2 Survivors' -ErrorAction SilentlyContinue); $i++) {
+# 다른 폴더(웹용 빌드 · 시험용 복사본)를 패치할 때는 실행 중인 게임과 상관없다
+$gameFree = $env:D2S_SKIPRUN -or ($GameDir.Trim('"').TrimEnd('\') -ne (Join-Path $env:LOCALAPPDATA 'Programs\D2 Survivors'))
+for ($i = 0; $i -lt 30 -and -not $gameFree -and (Get-Process -Name 'D2 Survivors' -ErrorAction SilentlyContinue); $i++) {
     if ($i -eq 0) { Write-Host (T '  게임이 꺼지기를 기다리는 중...' '  Waiting for the game to close...') }
     Start-Sleep -Milliseconds 500
 }
-if (Get-Process -Name 'D2 Survivors' -ErrorAction SilentlyContinue) {
+if (-not $gameFree -and (Get-Process -Name 'D2 Survivors' -ErrorAction SilentlyContinue)) {
     Fail (T '게임이 실행 중입니다. 게임을 완전히 끄고 다시 실행하세요.' 'The game is running. Close it completely and run this again.')
 }
 
